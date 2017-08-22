@@ -1,0 +1,7 @@
+# Vim
+.*.sw[a-z]
+
+# Haskell
+*.html
+.stack-work
+dist

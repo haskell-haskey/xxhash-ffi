@@ -1,0 +1,7 @@
+resolver: lts-9.1
+packages:
+- '.'
+extra-deps:
+- xxhash-0.0.2
+flags: {}
+extra-package-dbs: []
