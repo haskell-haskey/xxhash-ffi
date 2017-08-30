@@ -1,10 +1,13 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE MagicHash     #-}
+{-# LANGUAGE UnboxedTuples #-}
 -- |
--- Module:     Data.Digest.XXHash.FFI
--- Copyright:  (c) 2017 Henri Verroken
--- Licence:    BSD3
--- Maintainer: Henri Verroken <henriverroken@gmail.com
--- Stability:  stable
+-- Module:      Data.Digest.XXHash.FFI
+-- Copyright:   (c) 2017 Henri Verroken
+-- Licence:     BSD3
+-- Maintainer:  Henri Verroken <henriverroken@gmail.com
+-- Stability:   stable
+-- Portability: GHC
 --
 -- This module provides bindings to the xxHash64 and the xxHash32 algorithm.
 --
@@ -47,6 +50,8 @@ import qualified Data.ByteString.Lazy as BL
 import Foreign.C
 import Foreign.Ptr
 
+import GHC.Exts         (realWorld#)
+import GHC.IO           (IO(IO))
 import System.IO.Unsafe (unsafePerformIO)
 
 foreign import ccall unsafe "XXH64" c_xxh64 ::
@@ -119,6 +124,10 @@ foreign import ccall unsafe "XXH64_digest" c_xxh64_digest ::
     Ptr XXH64State -- ^ The state to digest
  -> IO CULLong     -- ^ Resulting hash
 
+{-# INLINE inlinePerformIO #-}
+inlinePerformIO :: IO a -> a
+inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
+
 {-# INLINE use #-}
 use :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
 use bs k = unsafeUseAsCStringLen bs $ \(ptr,len) -> k ptr (fromIntegral len)
@@ -140,10 +149,10 @@ class XXHash t where
 
 
 instance XXHash BS.ByteString where
-    xxh32 bs seed = fromIntegral . unsafePerformIO . use bs $
+    xxh32 bs seed = fromIntegral . inlinePerformIO . use bs $
         \ptr len -> c_xxh32 ptr len (fromIntegral seed)
 
-    xxh64 bs seed = fromIntegral . unsafePerformIO . use bs $
+    xxh64 bs seed = fromIntegral . inlinePerformIO . use bs $
         \ptr len -> c_xxh64 ptr len (fromIntegral seed)
 
 {-# SPECIALIZE xxh32 :: BS.ByteString -> Word32 -> Word32 #-}
