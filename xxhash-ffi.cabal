@@ -16,6 +16,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Data.Digest.XXHash.FFI
+                       Data.Digest.XXHash.FFI.C
   build-depends:       base >= 4.7 && < 5
                      , bytestring
   ghc-options:         -Wall
