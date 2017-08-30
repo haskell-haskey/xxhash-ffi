@@ -39,7 +39,7 @@ module Data.Digest.XXHash.FFI (
 
 import Control.Exception (bracket)
 
-import Data.ByteString.Unsafe (unsafeUseAsCString)
+import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Word (Word32, Word64)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
@@ -50,16 +50,16 @@ import Foreign.Ptr
 import System.IO.Unsafe (unsafePerformIO)
 
 foreign import ccall unsafe "XXH64" c_xxh64 ::
-    Ptr a   -- ^ 'Ptr' to the input buffer
- -> CSize   -- ^ Buffer length
- -> CULLong -- ^ Seed
- -> CULLong -- ^ Resulting hash
+    Ptr a      -- ^ 'Ptr' to the input buffer
+ -> CSize      -- ^ Buffer length
+ -> CULLong    -- ^ Seed
+ -> IO CULLong -- ^ Resulting hash
 
 foreign import ccall unsafe "XXH32" c_xxh32 ::
-    Ptr a -- ^ 'Ptr' to the input buffer
- -> CSize -- ^ Buffer length
- -> CUInt -- ^ Seed
- -> CUInt -- ^ Resulting hash
+    Ptr a      -- ^ 'Ptr' to the input buffer
+ -> CSize      -- ^ Buffer length
+ -> CUInt      -- ^ Seed
+ -> IO CUInt   -- ^ Resulting hash
 
 data XXH32State
 
@@ -119,6 +119,10 @@ foreign import ccall unsafe "XXH64_digest" c_xxh64_digest ::
     Ptr XXH64State -- ^ The state to digest
  -> IO CULLong     -- ^ Resulting hash
 
+{-# INLINE use #-}
+use :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
+use bs k = unsafeUseAsCStringLen bs $ \(ptr,len) -> k ptr (fromIntegral len)
+
 -- | Class for hashable data types.
 --
 -- Not that all standard instances are specialized using the @SPECIALIZE@
@@ -136,17 +140,11 @@ class XXHash t where
 
 
 instance XXHash BS.ByteString where
-    xxh32 bs seed = unsafePerformIO $
-        unsafeUseAsCString bs $ \ptr ->
-            return . fromIntegral $ c_xxh32 (castPtr ptr) len (fromIntegral seed)
-      where
-        len = fromIntegral $ BS.length bs
+    xxh32 bs seed = fromIntegral . unsafePerformIO . use bs $
+        \ptr len -> c_xxh32 ptr len (fromIntegral seed)
 
-    xxh64 bs seed = unsafePerformIO $
-        unsafeUseAsCString bs $ \ptr ->
-            return . fromIntegral $ c_xxh64 (castPtr ptr) len (fromIntegral seed)
-      where
-        len = fromIntegral $ BS.length bs
+    xxh64 bs seed = fromIntegral . unsafePerformIO . use bs $
+        \ptr len -> c_xxh64 ptr len (fromIntegral seed)
 
 {-# SPECIALIZE xxh32 :: BS.ByteString -> Word32 -> Word32 #-}
 {-# SPECIALIZE xxh64 :: BS.ByteString -> Word64 -> Word64 #-}
@@ -159,10 +157,7 @@ instance XXHash BL.ByteString where
                     mapM_ (update state) (BL.toChunks bs)
                     c_xxh32_digest state
       where
-        update state bs' =
-            let len = fromIntegral (BS.length bs') in
-            unsafeUseAsCString bs' $ \ ptr ->
-                c_xxh32_update state ptr len
+        update state bs' = use bs' $ c_xxh32_update state
 
     xxh64 bs seed = fromIntegral . unsafePerformIO $
         bracket c_xxh64_createState
@@ -171,10 +166,7 @@ instance XXHash BL.ByteString where
                     mapM_ (update state) (BL.toChunks bs)
                     c_xxh64_digest state
       where
-        update state bs' =
-            let len = fromIntegral (BS.length bs') in
-            unsafeUseAsCString bs' $ \ ptr ->
-                c_xxh64_update state ptr len
+        update state bs' = use bs' $ c_xxh64_update state
 
 {-# SPECIALIZE xxh32 :: BL.ByteString -> Word32 -> Word32 #-}
 {-# SPECIALIZE xxh64 :: BL.ByteString -> Word64 -> Word64 #-}
