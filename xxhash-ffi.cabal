@@ -1,5 +1,5 @@
 name:                xxhash-ffi
-version:             0.2.0.0
+version:             0.2.1
 synopsis:            Bindings to the C implementation the xxHash algorithm
 description:         Bindings to the C implementation the xxHash algorithm. xxHash provides 32-bit and 64-bit extremely fast non-cryptographic hash functions.
 homepage:            https://github.com/haskell-haskey/xxhash-ffi#readme
@@ -10,7 +10,7 @@ maintainer:          henriverroken@gmail.com
 copyright:           2017 Henri Verroken
 category:            Cryptography
 build-type:          Simple
-extra-source-files:  README.md
+extra-source-files:  README.md, CHANGELOG.md
 cabal-version:       >=1.10
 
 library
