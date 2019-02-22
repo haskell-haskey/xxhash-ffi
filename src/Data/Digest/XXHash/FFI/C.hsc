@@ -44,6 +44,10 @@ module Data.Digest.XXHash.FFI.C (
 , c_xxh64_reset
 , c_xxh64_update
 , c_xxh64_digest
+  
+  -- ** Convenience functions
+, xxh64Update  
+, xxh32Update  
 ) where
 
 -- Define XXH_STATIC_LINKING_ONLY to expose the definition of the state structs.
@@ -52,10 +56,13 @@ module Data.Digest.XXHash.FFI.C (
 #include "xxhash.h"
 
 import Foreign.C.Types
+import Foreign.C
 import Foreign.Ptr       (Ptr)
 import GHC.Exts          (Int(..), RealWorld,
                           MutableByteArray##, newByteArray##)
 import GHC.IO            (IO(IO))
+import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
+import qualified Data.ByteString as BS
 
 foreign import ccall unsafe "XXH64" c_xxh64 ::
     Ptr a      -- ^ 'Ptr' to the input buffer
@@ -132,3 +139,17 @@ allocaXXH32State = allocaMutableByteArray #{size XXH32_state_t}
 --   to the function 'f'.
 allocaXXH64State :: (XXH64State -> IO a) -> IO a
 allocaXXH64State = allocaMutableByteArray #{size XXH64_state_t}
+
+{-# INLINE use #-}
+use :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
+use bs k = unsafeUseAsCStringLen bs $ \(ptr,len) -> k ptr (fromIntegral len)
+
+{-# INLINE xxh64Update #-}
+-- | 'xxh64Update' is a convenience wrapper over 'c_xxh64_update' function.
+xxh64Update :: XXH64State -> BS.ByteString -> IO ()
+xxh64Update state bs = use bs (\ptr len -> c_xxh64_update state ptr len)
+
+{-# INLINE xxh32Update #-}
+-- | 'xxh32Update' is a convenience wrapper over 'c_xxh32_update' function.
+xxh32Update :: XXH64State -> BS.ByteString -> IO ()
+xxh32Update state bs = use bs (\ptr len -> c_xxh32_update state ptr len)
