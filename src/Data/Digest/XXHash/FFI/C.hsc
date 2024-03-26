@@ -1,3 +1,4 @@
+{-# LANGUAGE CApiFFI                  #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE MagicHash                #-}
 {-# LANGUAGE UnboxedTuples            #-}
@@ -64,13 +65,13 @@ import GHC.IO            (IO(IO))
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import qualified Data.ByteString as BS
 
-foreign import ccall unsafe "XXH64" c_xxh64 ::
+foreign import capi unsafe "xxhash.h XXH64" c_xxh64 ::
     Ptr a      -- ^ 'Ptr' to the input buffer
  -> CSize      -- ^ Buffer length
  -> CULLong    -- ^ Seed
  -> IO CULLong -- ^ Resulting hash
 
-foreign import ccall unsafe "XXH32" c_xxh32 ::
+foreign import capi unsafe "xxhash.h XXH32" c_xxh32 ::
     Ptr a      -- ^ 'Ptr' to the input buffer
  -> CSize      -- ^ Buffer length
  -> CUInt      -- ^ Seed
@@ -79,46 +80,46 @@ foreign import ccall unsafe "XXH32" c_xxh32 ::
 -- | Intermediate state for computing a XXH32 using segmentation or streams.
 type XXH32State = MutableByteArray## RealWorld
 
-foreign import ccall unsafe "XXH32_copyState" c_xxh32_copyState ::
+foreign import capi unsafe "xxhash.h XXH32_copyState" c_xxh32_copyState ::
     XXH32State     -- ^ Destination
  -> XXH32State     -- ^ Source
  -> IO ()
 
-foreign import ccall unsafe "XXH32_reset" c_xxh32_reset ::
+foreign import capi unsafe "xxhash.h XXH32_reset" c_xxh32_reset ::
     XXH32State     -- ^ The state to reset
  -> CUInt          -- ^ The initial seed
  -> IO ()
 
-foreign import ccall unsafe "XXH32_update" c_xxh32_update ::
+foreign import capi unsafe "xxhash.h XXH32_update" c_xxh32_update ::
     XXH32State     -- ^ The state to update
  -> Ptr a          -- ^ 'Ptr' to the input buffer
  -> CSize          -- ^ Buffer length
  -> IO ()
 
-foreign import ccall unsafe "XXH32_digest" c_xxh32_digest ::
+foreign import capi unsafe "xxhash.h XXH32_digest" c_xxh32_digest ::
     XXH32State     -- ^ The state to digest
  -> IO CUInt       -- ^ Resulting hash
 
 -- | Intermediate state for computing a XXH64 using segmentation or streams.
 type XXH64State = MutableByteArray## RealWorld
 
-foreign import ccall unsafe "XXH64_copyState" c_xxh64_copyState ::
+foreign import capi unsafe "xxhash.h XXH64_copyState" c_xxh64_copyState ::
     XXH64State     -- ^ Destination
  -> XXH64State     -- ^ Source
  -> IO ()
 
-foreign import ccall unsafe "XXH64_reset" c_xxh64_reset ::
+foreign import capi unsafe "xxhash.h XXH64_reset" c_xxh64_reset ::
     XXH64State     -- ^ The state to reset
  -> CULLong        -- ^ The initial seed
  -> IO ()
 
-foreign import ccall unsafe "XXH64_update" c_xxh64_update ::
+foreign import capi unsafe "xxhash.h XXH64_update" c_xxh64_update ::
     XXH64State     -- ^ The state to update
  -> Ptr a          -- ^ 'Ptr' to the input buffer
  -> CSize          -- ^ Buffer length
  -> IO ()
 
-foreign import ccall unsafe "XXH64_digest" c_xxh64_digest ::
+foreign import capi unsafe "xxhash.h XXH64_digest" c_xxh64_digest ::
     XXH64State     -- ^ The state to digest
  -> IO CULLong     -- ^ Resulting hash
 
