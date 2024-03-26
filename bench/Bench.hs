@@ -11,7 +11,9 @@ import qualified Data.Digest.CRC32 as CRC32
 import qualified Data.Digest.XXHash as XXHash
 #endif
 import qualified Data.Digest.XXHash.FFI as FFI
+#ifdef MIN_VERSION_hashable
 import qualified Data.Hashable as Hashable
+#endif
 
 import Test.Tasty.Bench
 
@@ -30,7 +32,9 @@ main = do
 #endif
             , bench "Data.Digest.adler32 (c, zlib)" $ nf Adler32.adler32 med
             , bench "Data.Digest.crc32 (c, zlib)" $ nf CRC32.crc32 med
+#ifdef MIN_VERSION_hashable
             , bench "Data.Hashable (c, FNV?)" $ nf Hashable.hash med
+#endif
             ]
         , bgroup "1kB"
             [ bench "Data.Digest.XXHash.FFI (32) (c)" $ nf (FFI.xxh32 bs1k) 0
@@ -41,7 +45,9 @@ main = do
 #endif
             , bench "Data.Digest.adler32 (c, zlib)" $ nf Adler32.adler32 bs1k
             , bench "Data.Digest.crc32 (c, zlib)" $ nf CRC32.crc32 bs1k
+#ifdef MIN_VERSION_hashable
             , bench "Data.Hashable (c, FNV?)" $ nf Hashable.hash bs1k
+#endif
             ]
         , bgroup "4kB"
             [ bench "Data.Digest.XXHash.FFI (32) (c)" $ nf (FFI.xxh32 bs4k) 0
@@ -52,7 +58,9 @@ main = do
 #endif
             , bench "Data.Digest.adler32 (c, zlib)" $ nf Adler32.adler32 bs4k
             , bench "Data.Digest.crc32 (c, zlib)" $ nf CRC32.crc32 bs4k
+#ifdef MIN_VERSION_hashable
             , bench "Data.Hashable (c, FNV?)" $ nf Hashable.hash bs4k
+#endif
             ]
         ]
 
