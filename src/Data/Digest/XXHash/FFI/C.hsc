@@ -27,7 +27,8 @@
 module Data.Digest.XXHash.FFI.C (
   -- * C Interface
   -- ** Direct Calculation
-  c_xxh64
+  c_xxh3_64bits_withSeed
+, c_xxh64
 , c_xxh32
 
   -- ** 32-bit state functions
@@ -46,8 +47,17 @@ module Data.Digest.XXHash.FFI.C (
 , c_xxh64_update
 , c_xxh64_digest
   
+  -- ** XXH3 state functions
+, XXH3State
+, allocaXXH3State
+, c_xxh3_copyState
+, c_xxh3_64bits_reset_withSeed
+, c_xxh3_64bits_update
+, c_xxh3_64bits_digest
+
   -- ** Convenience functions
-, xxh64Update  
+, xxh3Update_64bits
+, xxh64Update
 , xxh32Update  
 ) where
 
@@ -64,6 +74,13 @@ import GHC.Exts          (Int(..), RealWorld,
 import GHC.IO            (IO(IO))
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import qualified Data.ByteString as BS
+
+-- | @since 0.3
+foreign import capi unsafe "xxhash.h XXH3_64bits_withSeed" c_xxh3_64bits_withSeed ::
+    Ptr a      -- ^ 'Ptr' to the input buffer
+ -> CSize      -- ^ Buffer length
+ -> CULLong    -- ^ Seed
+ -> IO CULLong -- ^ Resulting hash
 
 foreign import capi unsafe "xxhash.h XXH64" c_xxh64 ::
     Ptr a      -- ^ 'Ptr' to the input buffer
@@ -123,6 +140,35 @@ foreign import capi unsafe "xxhash.h XXH64_digest" c_xxh64_digest ::
     XXH64State     -- ^ The state to digest
  -> IO CULLong     -- ^ Resulting hash
 
+-- | Intermediate state for computing a XXH3 using segmentation or streams.
+--
+-- @since 0.3
+type XXH3State = MutableByteArray## RealWorld
+
+-- | @since 0.3
+foreign import capi unsafe "xxhash.h XXH3_copyState" c_xxh3_copyState ::
+    XXH3State      -- ^ Destination
+ -> XXH3State      -- ^ Source
+ -> IO ()
+
+-- | @since 0.3
+foreign import capi unsafe "xxhash.h XXH3_64bits_reset_withSeed" c_xxh3_64bits_reset_withSeed ::
+    XXH3State      -- ^ The state to reset
+ -> CULLong        -- ^ The initial seed
+ -> IO ()
+
+-- | @since 0.3
+foreign import capi unsafe "xxhash.h XXH3_64bits_update" c_xxh3_64bits_update ::
+    XXH3State      -- ^ The state to update
+ -> Ptr a          -- ^ 'Ptr' to the input buffer
+ -> CSize          -- ^ Buffer length
+ -> IO ()
+
+-- | @since 0.3
+foreign import capi unsafe "xxhash.h XXH3_64bits_digest" c_xxh3_64bits_digest ::
+    XXH3State      -- ^ The state to digest
+ -> IO CULLong     -- ^ Resulting hash
+
 {-# INLINE allocaMutableByteArray #-}
 allocaMutableByteArray :: Int -> (MutableByteArray## RealWorld -> IO b) -> IO b
 allocaMutableByteArray (I## len) f = IO $ \s0 ->
@@ -130,27 +176,44 @@ allocaMutableByteArray (I## len) f = IO $ \s0 ->
     case f mba                 of { IO m -> m s1 }}
 
 {-# INLINE allocaXXH32State #-}
--- | 'allocaXXH32State f' temporarily allocates a 'XXH32State' and passes it
---   to the function 'f'.
+-- | 'allocaXXH32State' @f@ temporarily allocates a 'XXH32State' and passes it
+--   to the function @f@.
 allocaXXH32State :: (XXH32State -> IO a) -> IO a
 allocaXXH32State = allocaMutableByteArray #{size XXH32_state_t}
 
 {-# INLINE allocaXXH64State #-}
--- | 'allocaXXH64State f' temporarily allocates a 'XXH64State' and passes it
---   to the function 'f'.
+-- | 'allocaXXH64State'  @f@ temporarily allocates a 'XXH64State' and passes it
+--   to the function  @f@.
 allocaXXH64State :: (XXH64State -> IO a) -> IO a
 allocaXXH64State = allocaMutableByteArray #{size XXH64_state_t}
+
+{-# INLINE allocaXXH3State #-}
+-- | 'allocaXXH3State' @f@ temporarily allocates a 'XXH3State' and passes it
+--   to the function  @f@.
+allocaXXH3State :: (XXH3State -> IO a) -> IO a
+allocaXXH3State = allocaMutableByteArray #{size XXH3_state_t}
 
 {-# INLINE use #-}
 use :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
 use bs k = unsafeUseAsCStringLen bs $ \(ptr,len) -> k ptr (fromIntegral len)
 
+{-# INLINE xxh3Update_64bits #-}
+-- | 'xxh3Update_64bits' is a convenience wrapper over 'c_xxh64_update' function.
+--
+-- @since 0.3
+xxh3Update_64bits :: XXH3State -> BS.ByteString -> IO ()
+xxh3Update_64bits state bs = use bs (\ptr len -> c_xxh3_64bits_update state ptr len)
+
 {-# INLINE xxh64Update #-}
 -- | 'xxh64Update' is a convenience wrapper over 'c_xxh64_update' function.
+--
+-- @since 0.3
 xxh64Update :: XXH64State -> BS.ByteString -> IO ()
 xxh64Update state bs = use bs (\ptr len -> c_xxh64_update state ptr len)
 
 {-# INLINE xxh32Update #-}
 -- | 'xxh32Update' is a convenience wrapper over 'c_xxh32_update' function.
+--
+-- @since 0.3
 xxh32Update :: XXH64State -> BS.ByteString -> IO ()
 xxh32Update state bs = use bs (\ptr len -> c_xxh32_update state ptr len)
