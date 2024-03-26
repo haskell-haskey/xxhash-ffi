@@ -21,22 +21,32 @@ build-type:         Simple
 extra-doc-files:
     README.md
     CHANGELOG.md
+extra-source-files:
+    src-c/xxhash.h
 
 source-repository head
     type:     git
     location: https://github.com/hverr/xxhash-ffi
+
+flag pkg-config
+  default:     True
+  manual:      False
+  description: Use @pkg-config(1)@ to locate foreign @xxhash@ library.
 
 library
     exposed-modules:
         Data.Digest.XXHash.FFI
         Data.Digest.XXHash.FFI.C
 
-    c-sources:        src-c/xxhash.c
+    if flag(pkg-config) && (impl(ghc < 8.4) || impl (ghc >= 8.10))
+      pkgconfig-depends: libxxhash >= 0.8
+    else
+      c-sources:        src-c/xxhash.c
+      include-dirs:     src-c
+      includes:         xxhash.h
+
     hs-source-dirs:   src
     default-language: Haskell2010
-    include-dirs:     src-c
-    includes:         xxhash.h
-    install-includes: src-c/xxhash.h
     ghc-options:      -Wall
     build-depends:
         base >=4.10 && <5,
