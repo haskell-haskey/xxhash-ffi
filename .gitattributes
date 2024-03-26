@@ -1,0 +1,2 @@
+src-c/*.c linguist-detectable=false
+src-c/*.h linguist-detectable=false
