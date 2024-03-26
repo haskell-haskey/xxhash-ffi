@@ -45,7 +45,7 @@ benchmark xxhash-ffi-bench
   build-depends:       base
                      , xxhash-ffi
                      , bytestring
-                     , criterion
+                     , tasty-bench
                      , deepseq
                      , digest
                      , hashable

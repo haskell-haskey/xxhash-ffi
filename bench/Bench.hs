@@ -10,7 +10,7 @@ import qualified Data.Digest.XXHash as XXHash
 import qualified Data.Digest.XXHash.FFI as FFI
 import qualified Data.Hashable as Hashable
 
-import Criterion.Main
+import Test.Tasty.Bench
 
 main :: IO ()
 main = do
