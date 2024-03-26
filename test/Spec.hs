@@ -8,15 +8,14 @@ import Test.QuickCheck.Monadic
 import Test.Tasty
 import Test.Tasty.QuickCheck
 
-import Control.Applicative ((<$>))
-
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import Data.Digest.XXHash.FFI.C
-import Data.Monoid ((<>))
+import Data.Semigroup ((<>))
 import Data.Word (Word32, Word64)
 import Foreign.C.Types (CUInt (..), CULLong (..))
+import Prelude hiding ((<>))
 
 import Data.Digest.XXHash.FFI (xxh32, xxh64)
 
