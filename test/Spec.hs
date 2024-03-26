@@ -1,90 +1,107 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Main where
 
-import Test.Hspec
-import Test.Hspec.QuickCheck
 import Test.QuickCheck.Monadic
-import Test.QuickCheck
+import Test.Tasty
+import Test.Tasty.QuickCheck
 
 import Control.Applicative ((<$>))
 
 import Data.ByteString (ByteString)
-import Data.Word (Word32, Word64)
-import Foreign.C.Types (CULLong(..), CUInt(..))
-import Data.Monoid ((<>))
-import Data.Digest.XXHash.FFI.C
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BL
+import Data.Digest.XXHash.FFI.C
+import Data.Monoid ((<>))
+import Data.Word (Word32, Word64)
+import Foreign.C.Types (CUInt (..), CULLong (..))
 
 import Data.Digest.XXHash.FFI (xxh32, xxh64)
 
 instance Arbitrary BL.ByteString where
-    arbitrary = BL.pack <$> arbitrary
-    shrink bs = BL.pack <$> shrink (BL.unpack bs)
+  arbitrary = BL.pack <$> arbitrary
+  shrink bs = BL.pack <$> shrink (BL.unpack bs)
 
 instance Arbitrary BS.ByteString where
-    arbitrary = BS.pack <$> arbitrary
-    shrink bs = BS.pack <$> shrink (BS.unpack bs)
+  arbitrary = BS.pack <$> arbitrary
+  shrink bs = BS.pack <$> shrink (BS.unpack bs)
 
 main :: IO ()
-main = hspec suite
-
-suite :: Spec
-suite = do
-    describe "xxh32 strict" $
-        it "hashes known pairs" $ do
-            xxh32bs' "" `shouldBe` 0x02cc5d05
-            xxh32bs' "Hello World" `shouldBe` 0xb1fd16ee
-            xxh32bs' "xxhash is a hashing library" `shouldBe` 0x5e213914
-
-    describe "xxh64 strict" $
-        it "hashes known pairs" $ do
-            xxh64bs' "" `shouldBe` 0xef46db3751d8e999
-            xxh64bs' "Hello World" `shouldBe` 0x6334d20719245bc2
-            xxh64bs' "xxhash is a hashing library" `shouldBe` 0xea6cd1701a857e7c
-
-    describe "xxh32 lazy" $
-        it "hashes known pairs" $ do
-            xxh32bs (BL.fromChunks [""]) `shouldBe` 0x02cc5d05
-            xxh32bs (BL.fromChunks ["Hello ", "World"]) `shouldBe` 0xb1fd16ee
-            xxh32bs (BL.fromChunks ["xxhash is ", "a hashing ", "library"]) `shouldBe` 0x5e213914
-
-    describe "xxh64 lazy" $
-        it "hashes known pairs" $ do
-            xxh64bs (BL.fromChunks [""]) `shouldBe` 0xef46db3751d8e999
-            xxh64bs (BL.fromChunks ["Hello ", "World"]) `shouldBe` 0x6334d20719245bc2
-            xxh64bs (BL.fromChunks ["xxhash is ", "a hashing ", "library"]) `shouldBe` 0xea6cd1701a857e7c
-    describe "lazy and strict" $
-        prop "hashes lazy and strict" $ \(bs :: BL.ByteString) ->
-            xxh64 bs 0 == xxh64 (BL.toStrict bs) 0
-    describe "Streaming API (64 bit)" $
-        prop "checking streaming and non streaming equivalence" $ \(a, b, c, seed) -> do
-            let hash = xxh64 (a <> b <> c) seed
-            monadicIO $ do
-              (CULLong shash) <- run $ allocaXXH64State $ \state -> do
-                                   c_xxh64_reset state (CULLong seed)
-                                   xxh64Update state a
-                                   xxh64Update state b
-                                   xxh64Update state c
-                                   c_xxh64_digest state
-              assert (shash == hash)
-    describe "Streaming API (32 bit)" $
-        prop "checking streaming and non streaming equivalence" $ property streaming32Equivalence
+main =
+  defaultMain $
+    testGroup "All" $
+      [ testGroup
+          "xxh32 strict"
+          [ testProperty "<empty>" $
+              xxh32bs' "" === 0x02cc5d05
+          , testProperty "Hello World" $
+              xxh32bs' "Hello World" === 0xb1fd16ee
+          , testProperty "xxhash is a hashing library" $
+              xxh32bs' "xxhash is a hashing library" === 0x5e213914
+          ]
+      , testGroup
+          "xxh64 strict"
+          [ testProperty "<empty>" $
+              xxh64bs' "" === 0xef46db3751d8e999
+          , testProperty "Hello World" $
+              xxh64bs' "Hello World" === 0x6334d20719245bc2
+          , testProperty "xxhash is a hashing library" $
+              xxh64bs' "xxhash is a hashing library" === 0xea6cd1701a857e7c
+          ]
+      , testGroup
+          "xxh32 lazy"
+          [ testProperty "<empty>" $
+              xxh32bs (BL.fromChunks [""]) === 0x02cc5d05
+          , testProperty "Hello World" $
+              xxh32bs (BL.fromChunks ["Hello ", "World"]) === 0xb1fd16ee
+          , testProperty "xxhash is a hashing library" $
+              xxh32bs (BL.fromChunks ["xxhash is ", "a hashing ", "library"]) === 0x5e213914
+          ]
+      , testGroup
+          "xxh64 lazy"
+          [ testProperty "<empty>" $
+              xxh64bs (BL.fromChunks [""]) === 0xef46db3751d8e999
+          , testProperty "Hello World" $
+              xxh64bs (BL.fromChunks ["Hello ", "World"]) === 0x6334d20719245bc2
+          , testProperty "xxhash is a hashing library" $
+              xxh64bs (BL.fromChunks ["xxhash is ", "a hashing ", "library"]) === 0xea6cd1701a857e7c
+          ]
+      , testGroup
+          "lazy and strict"
+          [ testProperty "hashes lazy and strict" $ \(bs :: BL.ByteString) ->
+              xxh64 bs 0 == xxh64 (BL.toStrict bs) 0
+          ]
+      , testGroup
+          "Streaming API (64 bit)"
+          [ testProperty "checking streaming and non streaming equivalence" $ \(a, b, c, seed) -> do
+              let hash = xxh64 (a <> b <> c) seed
+              monadicIO $ do
+                (CULLong shash) <- run $ allocaXXH64State $ \state -> do
+                  c_xxh64_reset state (CULLong seed)
+                  xxh64Update state a
+                  xxh64Update state b
+                  xxh64Update state c
+                  c_xxh64_digest state
+                assert (shash == hash)
+          ]
+      , testGroup
+          "Streaming API (32 bit)"
+          [ testProperty "checking streaming and non streaming equivalence" $ property streaming32Equivalence
+          ]
+      ]
 
 streaming32Equivalence :: (ByteString, ByteString, ByteString, Word32) -> Property
-streaming32Equivalence (a,b,c,seed) = monadicIO $ do
+streaming32Equivalence (a, b, c, seed) = monadicIO $ do
   let hash = xxh32 (a <> b <> c) seed
   (CUInt shash) <- run $ allocaXXH32State $ \state -> do
-                                                    c_xxh32_reset state (CUInt seed)
-                                                    xxh32Update state a
-                                                    xxh32Update state b
-                                                    xxh32Update state c
-                                                    c_xxh32_digest state
+    c_xxh32_reset state (CUInt seed)
+    xxh32Update state a
+    xxh32Update state b
+    xxh32Update state c
+    c_xxh32_digest state
   assert $ shash == hash
-
-
 
 xxh32bs' :: ByteString -> Word32
 xxh32bs' = flip xxh32 0
