@@ -94,3 +94,16 @@ instance Hashable (XXH3 BS.ByteString) where
         ptr
         len
         (fromIntegral salt)
+
+instance Hashable (XXH3 BL.ByteString) where
+  hashWithSalt salt (XXH3 bs) = fromIntegral . unsafePerformIO $
+    allocaXXH3State $ \state -> do
+      c_xxh3_64bits_reset_withSeed state (fromIntegral salt)
+      mapM_ (update state) (BL.toChunks bs)
+      c_xxh3_64bits_digest state
+    where
+      update state bs' = use bs' $ \ptr len ->
+        (if len < 1000000 then c_xxh3_64bits_update else c_xxh3_64bits_update_safe)
+          state
+          ptr
+          len

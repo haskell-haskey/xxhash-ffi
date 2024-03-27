@@ -80,9 +80,22 @@ main =
               xxh64bs (BL.fromChunks ["xxhash is ", "a hashing ", "library"]) === 0xea6cd1701a857e7c
           ]
       , testGroup
+          "xxh3 lazy"
+          [ testProperty "<empty>" $
+              xxh3bs (BL.fromChunks [""]) === 9823752111294920285
+          , testProperty "Hello World" $
+              xxh3bs (BL.fromChunks ["Hello ", "World"]) === 7304763729587342359
+          , testProperty "xxhash is a hashing library" $
+              xxh3bs (BL.fromChunks ["xxhash is ", "a hashing ", "library"]) === 2442613548865080779
+          ]
+      , testGroup
           "lazy and strict"
-          [ testProperty "hashes lazy and strict" $ \(bs :: BL.ByteString) ->
-              xxh64 bs 0 == xxh64 (BL.toStrict bs) 0
+          [ testProperty "xxh32" $ \(bs :: BL.ByteString) ->
+              xxh32 bs 0 === xxh32 (BL.toStrict bs) 0
+          , testProperty "xxh64" $ \(bs :: BL.ByteString) ->
+              xxh64 bs 0 === xxh64 (BL.toStrict bs) 0
+          , testProperty "xxh3" $ \(bs :: BL.ByteString) ->
+              hash (XXH3 bs) === hash (XXH3 (BL.toStrict bs))
           ]
       , testGroup
           "Streaming API (64 bit)"
@@ -128,6 +141,9 @@ xxh32bs = flip xxh32 0
 
 xxh64bs :: BL.ByteString -> Word64
 xxh64bs = flip xxh64 0
+
+xxh3bs :: BL.ByteString -> Word64
+xxh3bs = fromIntegral . hash . XXH3
 
 use :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
 use bs k = BS.unsafeUseAsCStringLen bs $ \(ptr, len) -> k ptr (fromIntegral len)
