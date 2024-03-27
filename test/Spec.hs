@@ -19,6 +19,7 @@ import Data.Semigroup ((<>))
 import Data.Word (Word32, Word64)
 import Prelude hiding ((<>))
 
+import Data.Bits
 import Data.Hashable
 import Foreign.C
 
@@ -55,11 +56,14 @@ main =
       , testGroup
           "xxh3 strict"
           [ testProperty "<empty>" $
-              xxh3bs' "" === 9823752111294920285
+              xxh3bs' ""
+                === if finiteBitSize (0 :: Int) == 64 then -8622991962414631331 else -1052714159
           , testProperty "Hello World" $
-              xxh3bs' "Hello World" === 7304763729587342359
+              xxh3bs' "Hello World"
+                === if finiteBitSize (0 :: Int) == 64 then 7304763729587342359 else 207324119
           , testProperty "xxhash is a hashing library" $
-              xxh3bs' "xxhash is a hashing library" === 2442613548865080779
+              xxh3bs' "xxhash is a hashing library"
+                === if finiteBitSize (0 :: Int) == 64 then 2442613548865080779 else 419890613
           ]
       , testGroup
           "xxh32 lazy"
@@ -82,11 +86,14 @@ main =
       , testGroup
           "xxh3 lazy"
           [ testProperty "<empty>" $
-              xxh3bs (BL.fromChunks [""]) === 9823752111294920285
+              xxh3bs (BL.fromChunks [""])
+                === if finiteBitSize (0 :: Int) == 64 then -8622991962414631331 else -1052714159
           , testProperty "Hello World" $
-              xxh3bs (BL.fromChunks ["Hello ", "World"]) === 7304763729587342359
+              xxh3bs (BL.fromChunks ["Hello ", "World"])
+                === if finiteBitSize (0 :: Int) == 64 then 7304763729587342359 else 207324119
           , testProperty "xxhash is a hashing library" $
-              xxh3bs (BL.fromChunks ["xxhash is ", "a hashing ", "library"]) === 2442613548865080779
+              xxh3bs (BL.fromChunks ["xxhash is ", "a hashing ", "library"])
+                === if finiteBitSize (0 :: Int) == 64 then 2442613548865080779 else 419890613
           ]
       , testGroup
           "lazy and strict"
@@ -133,8 +140,8 @@ xxh32bs' = flip xxh32 0
 xxh64bs' :: ByteString -> Word64
 xxh64bs' = flip xxh64 0
 
-xxh3bs' :: ByteString -> Word64
-xxh3bs' = fromIntegral . hash . XXH3
+xxh3bs' :: ByteString -> Int
+xxh3bs' = hash . XXH3
 
 xxh32bs :: BL.ByteString -> Word32
 xxh32bs = flip xxh32 0
@@ -142,8 +149,8 @@ xxh32bs = flip xxh32 0
 xxh64bs :: BL.ByteString -> Word64
 xxh64bs = flip xxh64 0
 
-xxh3bs :: BL.ByteString -> Word64
-xxh3bs = fromIntegral . hash . XXH3
+xxh3bs :: BL.ByteString -> Int
+xxh3bs = hash . XXH3
 
 use :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
 use bs k = BS.unsafeUseAsCStringLen bs $ \(ptr, len) -> k ptr (fromIntegral len)
