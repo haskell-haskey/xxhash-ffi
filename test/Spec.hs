@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Main where
 
@@ -13,14 +13,14 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Unsafe as BS
-import Data.Digest.XXHash.FFI (xxh32, xxh64, XXH3(..))
+import Data.Digest.XXHash.FFI (XXH3 (..), xxh32, xxh64)
 import Data.Digest.XXHash.FFI.C
 import Data.Semigroup ((<>))
 import Data.Word (Word32, Word64)
 import Prelude hiding ((<>))
 
-import Foreign.C
 import Data.Hashable
+import Foreign.C
 
 instance Arbitrary BL.ByteString where
   arbitrary = BL.pack <$> arbitrary
@@ -130,7 +130,7 @@ xxh64bs :: BL.ByteString -> Word64
 xxh64bs = flip xxh64 0
 
 use :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
-use bs k = BS.unsafeUseAsCStringLen bs $ \(ptr,len) -> k ptr (fromIntegral len)
+use bs k = BS.unsafeUseAsCStringLen bs $ \(ptr, len) -> k ptr (fromIntegral len)
 
 xxh3Update_64bits :: XXH3State -> BS.ByteString -> IO ()
 xxh3Update_64bits state bs = use bs (c_xxh3_64bits_update state)
