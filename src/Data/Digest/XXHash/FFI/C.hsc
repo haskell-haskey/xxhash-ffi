@@ -27,8 +27,11 @@
 module Data.Digest.XXHash.FFI.C (
   -- * Direct calculation
   c_xxh3_64bits_withSeed
+, c_xxh3_64bits_withSeed_safe
 , c_xxh64
+, c_xxh64_safe
 , c_xxh32
+, c_xxh32_safe
 
   -- * 32-bit state functions
 , XXH32State
@@ -36,6 +39,7 @@ module Data.Digest.XXHash.FFI.C (
 , c_xxh32_copyState
 , c_xxh32_reset
 , c_xxh32_update
+, c_xxh32_update_safe
 , c_xxh32_digest
 
   -- * 64-bit state functions
@@ -44,6 +48,7 @@ module Data.Digest.XXHash.FFI.C (
 , c_xxh64_copyState
 , c_xxh64_reset
 , c_xxh64_update
+, c_xxh64_update_safe
 , c_xxh64_digest
   
   -- * XXH3 state functions
@@ -52,6 +57,7 @@ module Data.Digest.XXHash.FFI.C (
 , c_xxh3_copyState
 , c_xxh3_64bits_reset_withSeed
 , c_xxh3_64bits_update
+, c_xxh3_64bits_update_safe
 , c_xxh3_64bits_digest
 ) where
 
@@ -73,13 +79,43 @@ foreign import capi unsafe "xxhash.h XXH3_64bits_withSeed" c_xxh3_64bits_withSee
  -> CULLong    -- ^ Seed
  -> IO CULLong -- ^ Resulting hash
 
+-- | Same as 'c_xxh3_64bits_withSeed', but using @safe@ modifier.
+-- Prefer this function to hash large data in multithreaded environment.
+--
+-- @since 0.3
+foreign import capi safe "xxhash.h XXH3_64bits_withSeed" c_xxh3_64bits_withSeed_safe ::
+    Ptr a      -- ^ 'Ptr' to the input buffer
+ -> CSize      -- ^ Buffer length
+ -> CULLong    -- ^ Seed
+ -> IO CULLong -- ^ Resulting hash
+
 foreign import capi unsafe "xxhash.h XXH64" c_xxh64 ::
     Ptr a      -- ^ 'Ptr' to the input buffer
  -> CSize      -- ^ Buffer length
  -> CULLong    -- ^ Seed
  -> IO CULLong -- ^ Resulting hash
 
+-- | Same as 'c_xxh64', but using @safe@ modifier.
+-- Prefer this function to hash large data in multithreaded environment.
+--
+-- @since 0.3
+foreign import capi safe "xxhash.h XXH64" c_xxh64_safe ::
+    Ptr a      -- ^ 'Ptr' to the input buffer
+ -> CSize      -- ^ Buffer length
+ -> CULLong    -- ^ Seed
+ -> IO CULLong -- ^ Resulting hash
+
 foreign import capi unsafe "xxhash.h XXH32" c_xxh32 ::
+    Ptr a      -- ^ 'Ptr' to the input buffer
+ -> CSize      -- ^ Buffer length
+ -> CUInt      -- ^ Seed
+ -> IO CUInt   -- ^ Resulting hash
+
+-- | Same as 'c_xxh32', but using @safe@ modifier.
+-- Prefer this function to hash large data in multithreaded environment.
+--
+-- @since 0.3
+foreign import capi safe "xxhash.h XXH32" c_xxh32_safe ::
     Ptr a      -- ^ 'Ptr' to the input buffer
  -> CSize      -- ^ Buffer length
  -> CUInt      -- ^ Seed
@@ -99,6 +135,16 @@ foreign import capi unsafe "xxhash.h XXH32_reset" c_xxh32_reset ::
  -> IO ()
 
 foreign import capi unsafe "xxhash.h XXH32_update" c_xxh32_update ::
+    XXH32State     -- ^ The state to update
+ -> Ptr a          -- ^ 'Ptr' to the input buffer
+ -> CSize          -- ^ Buffer length
+ -> IO ()
+
+-- | Same as 'c_xxh32_update', but using @safe@ modifier.
+-- Prefer this function to hash large data in multithreaded environment.
+--
+-- @since 0.3
+foreign import capi safe "xxhash.h XXH32_update" c_xxh32_update_safe ::
     XXH32State     -- ^ The state to update
  -> Ptr a          -- ^ 'Ptr' to the input buffer
  -> CSize          -- ^ Buffer length
@@ -127,6 +173,16 @@ foreign import capi unsafe "xxhash.h XXH64_update" c_xxh64_update ::
  -> CSize          -- ^ Buffer length
  -> IO ()
 
+-- | Same as 'c_xxh64_update', but using @safe@ modifier.
+-- Prefer this function to hash large data in multithreaded environment.
+--
+-- @since 0.3
+foreign import capi safe "xxhash.h XXH64_update" c_xxh64_update_safe ::
+    XXH64State     -- ^ The state to update
+ -> Ptr a          -- ^ 'Ptr' to the input buffer
+ -> CSize          -- ^ Buffer length
+ -> IO ()
+
 foreign import capi unsafe "xxhash.h XXH64_digest" c_xxh64_digest ::
     XXH64State     -- ^ The state to digest
  -> IO CULLong     -- ^ Resulting hash
@@ -150,6 +206,16 @@ foreign import capi unsafe "xxhash.h XXH3_64bits_reset_withSeed" c_xxh3_64bits_r
 
 -- | @since 0.3
 foreign import capi unsafe "xxhash.h XXH3_64bits_update" c_xxh3_64bits_update ::
+    XXH3State      -- ^ The state to update
+ -> Ptr a          -- ^ 'Ptr' to the input buffer
+ -> CSize          -- ^ Buffer length
+ -> IO ()
+
+-- | Same as 'c_xxh3_64bits_update', but using @safe@ modifier.
+-- Prefer this function to hash large data in multithreaded environment.
+--
+-- @since 0.3
+foreign import capi safe "xxhash.h XXH3_64bits_update" c_xxh3_64bits_update_safe ::
     XXH3State      -- ^ The state to update
  -> Ptr a          -- ^ 'Ptr' to the input buffer
  -> CSize          -- ^ Buffer length
