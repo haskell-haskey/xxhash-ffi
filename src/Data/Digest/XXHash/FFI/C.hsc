@@ -25,13 +25,12 @@
 -- extra care should be taken when loading this code into the bytecode
 -- interpreter.
 module Data.Digest.XXHash.FFI.C (
-  -- * C Interface
-  -- ** Direct Calculation
+  -- * Direct calculation
   c_xxh3_64bits_withSeed
 , c_xxh64
 , c_xxh32
 
-  -- ** 32-bit state functions
+  -- * 32-bit state functions
 , XXH32State
 , allocaXXH32State
 , c_xxh32_copyState
@@ -39,7 +38,7 @@ module Data.Digest.XXHash.FFI.C (
 , c_xxh32_update
 , c_xxh32_digest
 
-  -- ** 64-bit state functions
+  -- * 64-bit state functions
 , XXH64State
 , allocaXXH64State
 , c_xxh64_copyState
@@ -47,18 +46,13 @@ module Data.Digest.XXHash.FFI.C (
 , c_xxh64_update
 , c_xxh64_digest
   
-  -- ** XXH3 state functions
+  -- * XXH3 state functions
 , XXH3State
 , allocaXXH3State
 , c_xxh3_copyState
 , c_xxh3_64bits_reset_withSeed
 , c_xxh3_64bits_update
 , c_xxh3_64bits_digest
-
-  -- ** Convenience functions
-, xxh3Update_64bits
-, xxh64Update
-, xxh32Update  
 ) where
 
 -- Define XXH_STATIC_LINKING_ONLY to expose the definition of the state structs.
@@ -67,13 +61,10 @@ module Data.Digest.XXHash.FFI.C (
 #include "xxhash.h"
 
 import Foreign.C.Types
-import Foreign.C
 import Foreign.Ptr       (Ptr)
 import GHC.Exts          (Int(..), RealWorld,
                           MutableByteArray##, newByteArray##)
 import GHC.IO            (IO(IO))
-import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
-import qualified Data.ByteString as BS
 
 -- | @since 0.3
 foreign import capi unsafe "xxhash.h XXH3_64bits_withSeed" c_xxh3_64bits_withSeed ::
@@ -192,28 +183,3 @@ allocaXXH64State = allocaMutableByteArray #{size XXH64_state_t}
 --   to the function  @f@.
 allocaXXH3State :: (XXH3State -> IO a) -> IO a
 allocaXXH3State = allocaMutableByteArray #{size XXH3_state_t}
-
-{-# INLINE use #-}
-use :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
-use bs k = unsafeUseAsCStringLen bs $ \(ptr,len) -> k ptr (fromIntegral len)
-
-{-# INLINE xxh3Update_64bits #-}
--- | 'xxh3Update_64bits' is a convenience wrapper over 'c_xxh64_update' function.
---
--- @since 0.3
-xxh3Update_64bits :: XXH3State -> BS.ByteString -> IO ()
-xxh3Update_64bits state bs = use bs (\ptr len -> c_xxh3_64bits_update state ptr len)
-
-{-# INLINE xxh64Update #-}
--- | 'xxh64Update' is a convenience wrapper over 'c_xxh64_update' function.
---
--- @since 0.3
-xxh64Update :: XXH64State -> BS.ByteString -> IO ()
-xxh64Update state bs = use bs (\ptr len -> c_xxh64_update state ptr len)
-
-{-# INLINE xxh32Update #-}
--- | 'xxh32Update' is a convenience wrapper over 'c_xxh32_update' function.
---
--- @since 0.3
-xxh32Update :: XXH64State -> BS.ByteString -> IO ()
-xxh32Update state bs = use bs (\ptr len -> c_xxh32_update state ptr len)

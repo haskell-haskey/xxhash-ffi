@@ -11,13 +11,14 @@ import Test.Tasty.QuickCheck
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Unsafe as BS
 import Data.Digest.XXHash.FFI.C
 import Data.Semigroup ((<>))
 import Data.Word (Word32, Word64)
-import Foreign.C.Types (CUInt (..), CULLong (..))
 import Prelude hiding ((<>))
 
 import Data.Digest.XXHash.FFI (xxh32, xxh64)
+import Foreign.C
 
 instance Arbitrary BL.ByteString where
   arbitrary = BL.pack <$> arbitrary
@@ -113,3 +114,15 @@ xxh32bs = flip xxh32 0
 
 xxh64bs :: BL.ByteString -> Word64
 xxh64bs = flip xxh64 0
+
+use :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
+use bs k = BS.unsafeUseAsCStringLen bs $ \(ptr,len) -> k ptr (fromIntegral len)
+
+xxh3Update_64bits :: XXH3State -> BS.ByteString -> IO ()
+xxh3Update_64bits state bs = use bs (c_xxh3_64bits_update state)
+
+xxh64Update :: XXH64State -> BS.ByteString -> IO ()
+xxh64Update state bs = use bs (c_xxh64_update state)
+
+xxh32Update :: XXH64State -> BS.ByteString -> IO ()
+xxh32Update state bs = use bs (c_xxh32_update state)
