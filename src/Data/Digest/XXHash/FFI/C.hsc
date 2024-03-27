@@ -69,7 +69,7 @@ module Data.Digest.XXHash.FFI.C (
 import Foreign.C.Types
 import Foreign.Ptr       (Ptr)
 import GHC.Exts          (Int(..), RealWorld,
-                          MutableByteArray##, newByteArray##)
+                          MutableByteArray##, newPinnedByteArray##)
 import GHC.IO            (IO(IO))
 
 -- | @since 0.3
@@ -229,7 +229,7 @@ foreign import capi unsafe "xxhash.h XXH3_64bits_digest" c_xxh3_64bits_digest ::
 {-# INLINE allocaMutableByteArray #-}
 allocaMutableByteArray :: Int -> (MutableByteArray## RealWorld -> IO b) -> IO b
 allocaMutableByteArray (I## len) f = IO $ \s0 ->
-    case newByteArray## len s0 of { (## s1, mba ##) ->
+    case newPinnedByteArray## len s0 of { (## s1, mba ##) ->
     case f mba                 of { IO m -> m s1 }}
 
 {-# INLINE allocaXXH32State #-}
