@@ -1,5 +1,6 @@
 {-# LANGUAGE MagicHash     #-}
 {-# LANGUAGE UnboxedTuples #-}
+{-# LANGUAGE FlexibleInstances #-}
 -- |
 -- Module:      Data.Digest.XXHash.FFI
 -- Copyright:   (c) 2017 Henri Verroken
@@ -12,7 +13,9 @@
 --
 -- The C implementation used is directly taken from <https://github.com/Cyan4973/xxHash>.
 module Data.Digest.XXHash.FFI (
-  -- * Interface
+  -- * XXH3 interface
+  XXH3(..),
+  -- * Deprecated interface
   XXHash(..)
 ) where
 
@@ -22,7 +25,7 @@ import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Word (Word32, Word64)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
-
+import Data.Hashable
 import Foreign.C
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -69,3 +72,13 @@ instance XXHash BL.ByteString where
             c_xxh64_digest state
       where
         update state bs' = use bs' $ c_xxh64_update state
+
+newtype XXH3 a = XXH3 { unXXH3 :: a }
+    deriving (Eq, Ord, Show)
+
+instance Hashable (XXH3 BS.ByteString) where
+    hashWithSalt salt (XXH3 bs) = fromIntegral . unsafePerformIO . use bs $
+        \ptr len ->
+            (if len < 1000000 then c_xxh3_64bits_withSeed else c_xxh3_64bits_withSeed_safe)
+                ptr len (fromIntegral salt)
+

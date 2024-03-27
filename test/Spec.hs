@@ -13,13 +13,14 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Unsafe as BS
+import Data.Digest.XXHash.FFI (xxh32, xxh64, XXH3(..))
 import Data.Digest.XXHash.FFI.C
 import Data.Semigroup ((<>))
 import Data.Word (Word32, Word64)
 import Prelude hiding ((<>))
 
-import Data.Digest.XXHash.FFI (xxh32, xxh64)
 import Foreign.C
+import Data.Hashable
 
 instance Arbitrary BL.ByteString where
   arbitrary = BL.pack <$> arbitrary
@@ -52,6 +53,15 @@ main =
               xxh64bs' "xxhash is a hashing library" === 0xea6cd1701a857e7c
           ]
       , testGroup
+          "xxh3 strict"
+          [ testProperty "<empty>" $
+              xxh3bs' "" === 9823752111294920285
+          , testProperty "Hello World" $
+              xxh3bs' "Hello World" === 7304763729587342359
+          , testProperty "xxhash is a hashing library" $
+              xxh3bs' "xxhash is a hashing library" === 2442613548865080779
+          ]
+      , testGroup
           "xxh32 lazy"
           [ testProperty "<empty>" $
               xxh32bs (BL.fromChunks [""]) === 0x02cc5d05
@@ -77,7 +87,7 @@ main =
       , testGroup
           "Streaming API (64 bit)"
           [ testProperty "checking streaming and non streaming equivalence" $ \(a, b, c, seed) -> do
-              let hash = xxh64 (a <> b <> c) seed
+              let hsh = xxh64 (a <> b <> c) seed
               monadicIO $ do
                 (CULLong shash) <- run $ allocaXXH64State $ \state -> do
                   c_xxh64_reset state (CULLong seed)
@@ -85,7 +95,7 @@ main =
                   xxh64Update state b
                   xxh64Update state c
                   c_xxh64_digest state
-                assert (shash == hash)
+                assert (shash == hsh)
           ]
       , testGroup
           "Streaming API (32 bit)"
@@ -95,20 +105,23 @@ main =
 
 streaming32Equivalence :: (ByteString, ByteString, ByteString, Word32) -> Property
 streaming32Equivalence (a, b, c, seed) = monadicIO $ do
-  let hash = xxh32 (a <> b <> c) seed
+  let hsh = xxh32 (a <> b <> c) seed
   (CUInt shash) <- run $ allocaXXH32State $ \state -> do
     c_xxh32_reset state (CUInt seed)
     xxh32Update state a
     xxh32Update state b
     xxh32Update state c
     c_xxh32_digest state
-  assert $ shash == hash
+  assert $ shash == hsh
 
 xxh32bs' :: ByteString -> Word32
 xxh32bs' = flip xxh32 0
 
 xxh64bs' :: ByteString -> Word64
 xxh64bs' = flip xxh64 0
+
+xxh3bs' :: ByteString -> Word64
+xxh3bs' = fromIntegral . hash . XXH3
 
 xxh32bs :: BL.ByteString -> Word32
 xxh32bs = flip xxh32 0
