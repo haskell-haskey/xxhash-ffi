@@ -24,13 +24,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 
 import Foreign.C
-import GHC.Exts         (realWorld#)
-import GHC.IO           (IO(IO))
 import System.IO.Unsafe (unsafePerformIO)
-
-{-# INLINE inlinePerformIO #-}
-inlinePerformIO :: IO a -> a
-inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
 
 {-# INLINE use #-}
 use :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
@@ -50,17 +44,14 @@ class XXHash t where
     xxh64 :: t      -- ^ Data to hash
           -> Word64 -- ^ Seed
           -> Word64 -- ^ Resulting hash
-
+{-# DEPRECATED XXHash "Use new, XXH3-based functions instead" #-}
 
 instance XXHash BS.ByteString where
-    xxh32 bs seed = fromIntegral . inlinePerformIO . use bs $
+    xxh32 bs seed = fromIntegral . unsafePerformIO . use bs $
         \ptr len -> c_xxh32 ptr len (fromIntegral seed)
 
-    xxh64 bs seed = fromIntegral . inlinePerformIO . use bs $
+    xxh64 bs seed = fromIntegral . unsafePerformIO . use bs $
         \ptr len -> c_xxh64 ptr len (fromIntegral seed)
-
-{-# SPECIALIZE xxh32 :: BS.ByteString -> Word32 -> Word32 #-}
-{-# SPECIALIZE xxh64 :: BS.ByteString -> Word64 -> Word64 #-}
 
 instance XXHash BL.ByteString where
     xxh32 bs seed = fromIntegral . unsafePerformIO $
@@ -78,6 +69,3 @@ instance XXHash BL.ByteString where
             c_xxh64_digest state
       where
         update state bs' = use bs' $ c_xxh64_update state
-
-{-# SPECIALIZE xxh32 :: BL.ByteString -> Word32 -> Word32 #-}
-{-# SPECIALIZE xxh64 :: BL.ByteString -> Word64 -> Word64 #-}
