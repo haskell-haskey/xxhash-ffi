@@ -27,19 +27,27 @@ import Data.Hashable
 import Foreign.C
 
 instance Arbitrary BL.ByteString where
-  arbitrary = BL.fromChunks <$> arbitrary
-  shrink bs = BL.fromChunks <$> shrink (BL.toChunks bs)
+  arbitrary = BL.fromChunks . filter (not . BS.null) <$> arbitrary
+  shrink bs = BL.fromChunks . filter (not . BS.null) <$> shrink (BL.toChunks bs)
 
 instance Arbitrary BS.ByteString where
-  arbitrary = BS.pack <$> arbitrary
+  arbitrary = do
+    xs <- BS.pack <$> arbitrary
+    n <- choose (0, BS.length xs)
+    pure $ BS.drop n xs
   shrink bs = BS.pack <$> shrink (BS.unpack bs)
 
 instance Arbitrary TL.Text where
-  arbitrary = TL.fromChunks <$> arbitrary
-  shrink bs = TL.fromChunks <$> shrink (TL.toChunks bs)
+  arbitrary = TL.fromChunks . filter (not . TS.null) <$> arbitrary
+  shrink bs = TL.fromChunks . filter (not . TS.null) <$> shrink (TL.toChunks bs)
 
 instance Arbitrary TS.Text where
-  arbitrary = TS.pack <$> arbitrary
+  arbitrary = do
+    xs <- TS.pack <$> arbitrary
+    n <- choose (0, TS.length xs)
+    let ys = TS.drop n xs
+    m <- choose (0, TS.length ys)
+    pure $ TS.take m ys
   shrink bs = TS.pack <$> shrink (TS.unpack bs)
 
 main :: IO ()
