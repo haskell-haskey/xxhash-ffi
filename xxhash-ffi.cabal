@@ -4,7 +4,7 @@ version:            0.3
 license:            BSD-3-Clause
 license-file:       LICENSE
 copyright:          2017 Henri Verroken
-maintainer:         henriverroken@gmail.com
+maintainer:         Bodigrim
 author:             Henri Verroken
 tested-with:
     ghc ==9.10.1 ghc ==9.8.2 ghc ==9.6.4 ghc ==9.4.8 ghc ==9.2.8
@@ -12,9 +12,10 @@ tested-with:
     ghc ==8.2.2
 
 homepage:           https://github.com/haskell-haskey/xxhash-ffi#readme
-synopsis:           Bindings to the C implementation the xxHash algorithm
+synopsis:           Bindings and high-level helpers for xxHash
 description:
-    Bindings to the C implementation the xxHash algorithm. xxHash provides 32-bit and 64-bit extremely fast non-cryptographic hash functions.
+    Bindings and high-level helpers for xxHash family
+    of extremely fast non-cryptographic hash functions.
 
 category:           Cryptography
 build-type:         Simple
@@ -68,7 +69,8 @@ test-suite xxhash-ffi-test
         base,
         xxhash-ffi,
         QuickCheck,
-        bytestring,        tasty,
+        bytestring,
+        tasty,
         tasty-quickcheck,
         hashable,
         text <2.2

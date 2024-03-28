@@ -4,16 +4,11 @@
 {-# LANGUAGE UnboxedTuples #-}
 
 -- |
--- Module:      Data.Digest.XXHash.FFI
 -- Copyright:   (c) 2017 Henri Verroken
 -- Licence:     BSD3
--- Maintainer:  Henri Verroken <henriverroken@gmail.com
--- Stability:   stable
--- Portability: GHC
 --
--- This module provides bindings to the xxHash64 and the xxHash32 algorithm.
---
--- The C implementation used is directly taken from <https://github.com/Cyan4973/xxHash>.
+-- This module provides high-level helpers for the xxHash library,
+-- see <https://xxhash.com>.
 module Data.Digest.XXHash.FFI (
   -- * XXH3 interface
   XXH3 (..),
@@ -78,9 +73,6 @@ textMult = 2
 #endif
 
 -- | Class for hashable data types.
---
--- Not that all standard instances are specialized using the @SPECIALIZE@
--- pragma.
 class XXHash t where
   -- | Calculate the 32-bit xxHash using a given seed.
   xxh32
@@ -126,6 +118,10 @@ instance XXHash BL.ByteString where
     where
       update state bs' = useBS bs' $ c_xxh64_update state
 
+-- | A newtype over 'BS.ByteString' and `TS.Text` to provide convenient access
+-- to the `XXH3` hash function via `Hashable` type class.
+--
+-- @since 0.3
 newtype XXH3 a = XXH3 {unXXH3 :: a}
   deriving (Eq, Ord, Show)
 

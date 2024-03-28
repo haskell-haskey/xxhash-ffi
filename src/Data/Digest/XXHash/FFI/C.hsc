@@ -4,26 +4,12 @@
 {-# LANGUAGE UnboxedTuples            #-}
 {-# LANGUAGE UnliftedFFITypes         #-}
 -- |
--- Module:      Data.Digest.XXHash.FFI.C
 -- Copyright:   (c) 2017 Henri Verroken
 -- Licence:     BSD3
--- Maintainer:  Henri Verroken <henriverroken@gmail.com
--- Stability:   stable
--- Portability: GHC
 --
--- This module provides FFI imports to the C reference library at
--- <https://github.com/Cyan4973/xxHash>.
+-- This module provides FFI imports to the xxHash library,
+-- see <https://xxhash.com/doc/v0.8.2/> for documentation.
 --
--- This binding keeps the intermediate state for stream processing in an
--- 'MutableByteArray#' on the managed GHC heap. All foreign imports use unsafe
--- call semantics. Therefore, it is possible to use either unpinned or pinned
--- 'MutableByteArray#' since GHC's garbage collector doesn't move the either
--- kind during an unsafe foreign call. However GHCi <8.4 may replace unsafe
--- foreign calls with safe foreign calls in the bytecode
--- interpreter. Consequently, unpinned 'MutableByteArray#s' may be moved by the
--- garbage collector during foreign calls which obviously breaks this code. So
--- extra care should be taken when loading this code into the bytecode
--- interpreter.
 module Data.Digest.XXHash.FFI.C (
   -- * Direct calculation
   c_xxh3_64bits_withSeed
@@ -80,7 +66,7 @@ foreign import capi unsafe "xxhash.h XXH3_64bits_withSeed" c_xxh3_64bits_withSee
  -> IO CULLong -- ^ Resulting hash
 
 -- | Same as 'c_xxh3_64bits_withSeed', but using @safe@ modifier.
--- Prefer this function to hash large data in multithreaded environment.
+-- Prefer this function to hash large amounts of data in multithreaded environment.
 --
 -- @since 0.3
 foreign import capi safe "xxhash.h XXH3_64bits_withSeed" c_xxh3_64bits_withSeed_safe ::
@@ -96,7 +82,7 @@ foreign import capi unsafe "xxhash.h XXH64" c_xxh64 ::
  -> IO CULLong -- ^ Resulting hash
 
 -- | Same as 'c_xxh64', but using @safe@ modifier.
--- Prefer this function to hash large data in multithreaded environment.
+-- Prefer this function to hash large amounts of data in multithreaded environment.
 --
 -- @since 0.3
 foreign import capi safe "xxhash.h XXH64" c_xxh64_safe ::
@@ -112,7 +98,7 @@ foreign import capi unsafe "xxhash.h XXH32" c_xxh32 ::
  -> IO CUInt   -- ^ Resulting hash
 
 -- | Same as 'c_xxh32', but using @safe@ modifier.
--- Prefer this function to hash large data in multithreaded environment.
+-- Prefer this function to hash large amounts of data in multithreaded environment.
 --
 -- @since 0.3
 foreign import capi safe "xxhash.h XXH32" c_xxh32_safe ::
@@ -141,7 +127,7 @@ foreign import capi unsafe "xxhash.h XXH32_update" c_xxh32_update ::
  -> IO ()
 
 -- | Same as 'c_xxh32_update', but using @safe@ modifier.
--- Prefer this function to hash large data in multithreaded environment.
+-- Prefer this function to hash large amounts of data in multithreaded environment.
 --
 -- @since 0.3
 foreign import capi safe "xxhash.h XXH32_update" c_xxh32_update_safe ::
@@ -174,7 +160,7 @@ foreign import capi unsafe "xxhash.h XXH64_update" c_xxh64_update ::
  -> IO ()
 
 -- | Same as 'c_xxh64_update', but using @safe@ modifier.
--- Prefer this function to hash large data in multithreaded environment.
+-- Prefer this function to hash large amounts of data in multithreaded environment.
 --
 -- @since 0.3
 foreign import capi safe "xxhash.h XXH64_update" c_xxh64_update_safe ::
@@ -212,7 +198,7 @@ foreign import capi unsafe "xxhash.h XXH3_64bits_update" c_xxh3_64bits_update ::
  -> IO ()
 
 -- | Same as 'c_xxh3_64bits_update', but using @safe@ modifier.
--- Prefer this function to hash large data in multithreaded environment.
+-- Prefer this function to hash large amounts of data in multithreaded environment.
 --
 -- @since 0.3
 foreign import capi safe "xxhash.h XXH3_64bits_update" c_xxh3_64bits_update_safe ::
