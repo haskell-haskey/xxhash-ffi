@@ -23,17 +23,23 @@ module Data.Digest.XXHash.FFI (
 
 import Data.Digest.XXHash.FFI.C
 
+import qualified Data.Array.Byte as A
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Hashable
 import Data.Word (Word32, Word64)
 import Foreign.C
+import GHC.Exts (Int (..), Ptr (..), byteArrayContents#, isByteArrayPinned#, isTrue#, sizeofByteArray#)
 import System.IO.Unsafe (unsafePerformIO)
 
-{-# INLINE use #-}
-use :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
-use bs k = unsafeUseAsCStringLen bs $ \(ptr, len) -> k ptr (fromIntegral len)
+{-# INLINE useBS #-}
+useBS :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
+useBS bs k = unsafeUseAsCStringLen bs $ \(ptr, len) -> k ptr (fromIntegral len)
+
+{-# INLINE useBA #-}
+useBA :: A.ByteArray -> (CString -> CSize -> IO a) -> IO a
+useBA (A.ByteArray ba#) k = k (Ptr (byteArrayContents# ba#)) (fromIntegral (I# (sizeofByteArray# ba#)))
 
 -- | Class for hashable data types.
 --
@@ -61,10 +67,10 @@ class XXHash t where
 {-# DEPRECATED XXHash "Use new, XXH3-based functions instead" #-}
 
 instance XXHash BS.ByteString where
-  xxh32 bs seed = fromIntegral . unsafePerformIO . use bs $
+  xxh32 bs seed = fromIntegral . unsafePerformIO . useBS bs $
     \ptr len -> c_xxh32 ptr len (fromIntegral seed)
 
-  xxh64 bs seed = fromIntegral . unsafePerformIO . use bs $
+  xxh64 bs seed = fromIntegral . unsafePerformIO . useBS bs $
     \ptr len -> c_xxh64 ptr len (fromIntegral seed)
 
 instance XXHash BL.ByteString where
@@ -74,7 +80,7 @@ instance XXHash BL.ByteString where
       mapM_ (update state) (BL.toChunks bs)
       c_xxh32_digest state
     where
-      update state bs' = use bs' $ c_xxh32_update state
+      update state bs' = useBS bs' $ c_xxh32_update state
 
   xxh64 bs seed = fromIntegral . unsafePerformIO $
     allocaXXH64State $ \state -> do
@@ -82,13 +88,13 @@ instance XXHash BL.ByteString where
       mapM_ (update state) (BL.toChunks bs)
       c_xxh64_digest state
     where
-      update state bs' = use bs' $ c_xxh64_update state
+      update state bs' = useBS bs' $ c_xxh64_update state
 
 newtype XXH3 a = XXH3 {unXXH3 :: a}
   deriving (Eq, Ord, Show)
 
 instance Hashable (XXH3 BS.ByteString) where
-  hashWithSalt salt (XXH3 bs) = fromIntegral . unsafePerformIO . use bs $
+  hashWithSalt salt (XXH3 bs) = fromIntegral . unsafePerformIO . useBS bs $
     \ptr len ->
       (if len < 1000000 then c_xxh3_64bits_withSeed else c_xxh3_64bits_withSeed_safe)
         ptr
@@ -102,8 +108,20 @@ instance Hashable (XXH3 BL.ByteString) where
       mapM_ (update state) (BL.toChunks bs)
       c_xxh3_64bits_digest state
     where
-      update state bs' = use bs' $ \ptr len ->
+      update state bs' = useBS bs' $ \ptr len ->
         (if len < 1000000 then c_xxh3_64bits_update else c_xxh3_64bits_update_safe)
           state
           ptr
           len
+
+instance Hashable (XXH3 A.ByteArray) where
+  hashWithSalt salt (XXH3 ba@(A.ByteArray ba#)) =
+    fromIntegral . unsafePerformIO . useBA ba $
+      \ptr len ->
+        ( if len < 1000000 || not (isTrue# (isByteArrayPinned# ba#))
+            then c_xxh3_64bits_withSeed
+            else c_xxh3_64bits_withSeed_safe
+        )
+          ptr
+          len
+          (fromIntegral salt)

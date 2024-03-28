@@ -46,6 +46,9 @@ library
         bytestring <0.13,
         hashable <1.5
 
+    if impl(ghc < 9.4)
+      build-depends: data-array-byte < 0.2
+
     if (flag(pkg-config) && (impl(ghc <8.4) || impl(ghc >=8.10)))
         pkgconfig-depends: libxxhash >=0.8
 
