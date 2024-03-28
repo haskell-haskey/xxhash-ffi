@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
@@ -16,6 +17,8 @@ import qualified Data.ByteString.Unsafe as BS
 import Data.Digest.XXHash.FFI (XXH3 (..), xxh32, xxh64)
 import Data.Digest.XXHash.FFI.C
 import Data.Semigroup ((<>))
+import qualified Data.Text as TS
+import qualified Data.Text.Lazy as TL
 import Data.Word (Word32, Word64)
 import Prelude hiding ((<>))
 
@@ -24,12 +27,20 @@ import Data.Hashable
 import Foreign.C
 
 instance Arbitrary BL.ByteString where
-  arbitrary = BL.pack <$> arbitrary
-  shrink bs = BL.pack <$> shrink (BL.unpack bs)
+  arbitrary = BL.fromChunks <$> arbitrary
+  shrink bs = BL.fromChunks <$> shrink (BL.toChunks bs)
 
 instance Arbitrary BS.ByteString where
   arbitrary = BS.pack <$> arbitrary
   shrink bs = BS.pack <$> shrink (BS.unpack bs)
+
+instance Arbitrary TL.Text where
+  arbitrary = TL.fromChunks <$> arbitrary
+  shrink bs = TL.fromChunks <$> shrink (TL.toChunks bs)
+
+instance Arbitrary TS.Text where
+  arbitrary = TS.pack <$> arbitrary
+  shrink bs = TS.pack <$> shrink (TS.unpack bs)
 
 main :: IO ()
 main =
@@ -55,15 +66,32 @@ main =
           ]
       , testGroup
           "xxh3 strict"
-          [ testProperty "<empty>" $
-              xxh3bs' ""
-                === if finiteBitSize (0 :: Int) == 64 then -8622991962414631331 else -1052714159
-          , testProperty "Hello World" $
-              xxh3bs' "Hello World"
-                === if finiteBitSize (0 :: Int) == 64 then 7304763729587342359 else 207324119
-          , testProperty "xxhash is a hashing library" $
-              xxh3bs' "xxhash is a hashing library"
-                === if finiteBitSize (0 :: Int) == 64 then 2442613548865080779 else 419890613
+          [ testGroup
+              "ByteString"
+              [ testProperty "<empty>" $
+                  xxh3bs' ""
+                    === if finiteBitSize (0 :: Int) == 64 then -8622991962414631331 else -1052714159
+              , testProperty "Hello World" $
+                  xxh3bs' "Hello World"
+                    === if finiteBitSize (0 :: Int) == 64 then 7304763729587342359 else 207324119
+              , testProperty "xxhash is a hashing library" $
+                  xxh3bs' "xxhash is a hashing library"
+                    === if finiteBitSize (0 :: Int) == 64 then 2442613548865080779 else 419890613
+              ]
+          , testGroup
+              "Text"
+              [ testProperty "<empty>" $
+                  xxh3ts' ""
+                    === if finiteBitSize (0 :: Int) == 64 then -8622991962414631331 else -1052714159
+#if MIN_VERSION_text(2,0,0)
+              , testProperty "Hello World" $
+                  xxh3ts' "Hello World"
+                    === if finiteBitSize (0 :: Int) == 64 then 7304763729587342359 else 207324119
+              , testProperty "xxhash is a hashing library" $
+                  xxh3ts' "xxhash is a hashing library"
+                    === if finiteBitSize (0 :: Int) == 64 then 2442613548865080779 else 419890613
+#endif
+              ]
           ]
       , testGroup
           "xxh32 lazy"
@@ -85,15 +113,32 @@ main =
           ]
       , testGroup
           "xxh3 lazy"
-          [ testProperty "<empty>" $
-              xxh3bs (BL.fromChunks [""])
-                === if finiteBitSize (0 :: Int) == 64 then -8622991962414631331 else -1052714159
-          , testProperty "Hello World" $
-              xxh3bs (BL.fromChunks ["Hello ", "World"])
-                === if finiteBitSize (0 :: Int) == 64 then 7304763729587342359 else 207324119
-          , testProperty "xxhash is a hashing library" $
-              xxh3bs (BL.fromChunks ["xxhash is ", "a hashing ", "library"])
-                === if finiteBitSize (0 :: Int) == 64 then 2442613548865080779 else 419890613
+          [ testGroup
+              "ByteString"
+              [ testProperty "<empty>" $
+                  xxh3bs (BL.fromChunks [""])
+                    === if finiteBitSize (0 :: Int) == 64 then -8622991962414631331 else -1052714159
+              , testProperty "Hello World" $
+                  xxh3bs (BL.fromChunks ["Hello ", "World"])
+                    === if finiteBitSize (0 :: Int) == 64 then 7304763729587342359 else 207324119
+              , testProperty "xxhash is a hashing library" $
+                  xxh3bs (BL.fromChunks ["xxhash is ", "a hashing ", "library"])
+                    === if finiteBitSize (0 :: Int) == 64 then 2442613548865080779 else 419890613
+              ]
+          , testGroup
+              "Text"
+              [ testProperty "<empty>" $
+                  xxh3ts (TL.fromChunks [""])
+                    === if finiteBitSize (0 :: Int) == 64 then -8622991962414631331 else -1052714159
+#if MIN_VERSION_text(2,0,0)
+              , testProperty "Hello World" $
+                  xxh3ts (TL.fromChunks ["Hello ", "World"])
+                    === if finiteBitSize (0 :: Int) == 64 then 7304763729587342359 else 207324119
+              , testProperty "xxhash is a hashing library" $
+                  xxh3ts (TL.fromChunks ["xxhash is ", "a hashing ", "library"])
+                    === if finiteBitSize (0 :: Int) == 64 then 2442613548865080779 else 419890613
+#endif
+              ]
           ]
       , testGroup
           "lazy and strict"
@@ -101,8 +146,10 @@ main =
               xxh32 bs 0 === xxh32 (BL.toStrict bs) 0
           , testProperty "xxh64" $ \(bs :: BL.ByteString) ->
               xxh64 bs 0 === xxh64 (BL.toStrict bs) 0
-          , testProperty "xxh3" $ \(bs :: BL.ByteString) ->
+          , testProperty "xxh3 on ByteString" $ \(bs :: BL.ByteString) ->
               hash (XXH3 bs) === hash (XXH3 (BL.toStrict bs))
+          , testProperty "xxh3 on Text" $ \(ts :: TL.Text) ->
+              hash (XXH3 ts) === hash (XXH3 (TL.toStrict ts))
           ]
       , testGroup
           "Streaming API (64 bit)"
@@ -143,6 +190,9 @@ xxh64bs' = flip xxh64 0
 xxh3bs' :: ByteString -> Int
 xxh3bs' = hash . XXH3
 
+xxh3ts' :: TS.Text -> Int
+xxh3ts' = hash . XXH3
+
 xxh32bs :: BL.ByteString -> Word32
 xxh32bs = flip xxh32 0
 
@@ -151,6 +201,9 @@ xxh64bs = flip xxh64 0
 
 xxh3bs :: BL.ByteString -> Int
 xxh3bs = hash . XXH3
+
+xxh3ts :: TL.Text -> Int
+xxh3ts = hash . XXH3
 
 use :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
 use bs k = BS.unsafeUseAsCStringLen bs $ \(ptr, len) -> k ptr (fromIntegral len)
