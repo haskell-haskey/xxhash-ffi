@@ -21,6 +21,7 @@ import Data.Digest.XXHash.FFI.C
 
 import qualified Data.Array.Byte as A
 import qualified Data.ByteString as BS
+import Data.ByteString.Internal (accursedUnutterablePerformIO)
 import qualified Data.ByteString.Lazy as BL
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Hashable
@@ -31,26 +32,29 @@ import Data.Word (Word32, Word64)
 import Foreign.C
 import Foreign.Ptr (plusPtr)
 import GHC.Exts (ByteArray#, Int (..), Ptr (..), byteArrayContents#, isByteArrayPinned#, isTrue#, sizeofByteArray#)
-import System.IO.Unsafe (unsafePerformIO)
+
+{-# INLINE useBS' #-}
+useBS' :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
+useBS' bs k = unsafeUseAsCStringLen bs $ \(ptr, len) -> k ptr (fromIntegral len)
 
 {-# INLINE useBS #-}
-useBS :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
-useBS bs k = unsafeUseAsCStringLen bs $ \(ptr, len) -> k ptr (fromIntegral len)
+useBS :: BS.ByteString -> (CString -> Int -> IO a) -> IO a
+useBS bs k = unsafeUseAsCStringLen bs $ \(ptr, len) -> k ptr len
 
 {-# INLINE useBA #-}
-useBA :: A.ByteArray -> (CString -> CSize -> IO a) -> IO a
-useBA (A.ByteArray ba#) k = k (Ptr (byteArrayContents# ba#)) (fromIntegral (I# (sizeofByteArray# ba#)))
+useBA :: A.ByteArray -> (CString -> Int -> IO a) -> IO a
+useBA (A.ByteArray ba#) k = k (Ptr (byteArrayContents# ba#)) (I# (sizeofByteArray# ba#))
 
 {-# INLINE isPinnedBA #-}
 isPinnedBA :: A.ByteArray -> Bool
 isPinnedBA (A.ByteArray ba#) = isTrue# (isByteArrayPinned# ba#)
 
 {-# INLINE useTS #-}
-useTS :: TS.Text -> (CString -> CSize -> IO a) -> IO a
+useTS :: TS.Text -> (CString -> Int -> IO a) -> IO a
 useTS ts@(TS.Text _ off len) k =
   k
     (Ptr (byteArrayContents# (textArray ts)) `plusPtr` (off * textMult))
-    (fromIntegral (len * textMult))
+    (len * textMult)
 
 {-# INLINE isPinnedTS #-}
 isPinnedTS :: TS.Text -> Bool
@@ -95,28 +99,28 @@ class XXHash t where
 {-# DEPRECATED XXHash "Use new, XXH3-based functions instead" #-}
 
 instance XXHash BS.ByteString where
-  xxh32 bs seed = fromIntegral . unsafePerformIO . useBS bs $
+  xxh32 bs seed = fromIntegral . accursedUnutterablePerformIO . useBS' bs $
     \ptr len -> c_xxh32 ptr len (fromIntegral seed)
 
-  xxh64 bs seed = fromIntegral . unsafePerformIO . useBS bs $
+  xxh64 bs seed = fromIntegral . accursedUnutterablePerformIO . useBS' bs $
     \ptr len -> c_xxh64 ptr len (fromIntegral seed)
 
 instance XXHash BL.ByteString where
-  xxh32 bs seed = fromIntegral . unsafePerformIO $
+  xxh32 bs seed = fromIntegral . accursedUnutterablePerformIO $
     allocaXXH32State $ \state -> do
       c_xxh32_reset state (fromIntegral seed)
       mapM_ (update state) (BL.toChunks bs)
       c_xxh32_digest state
     where
-      update state bs' = useBS bs' $ c_xxh32_update state
+      update state bs' = useBS' bs' $ c_xxh32_update state
 
-  xxh64 bs seed = fromIntegral . unsafePerformIO $
+  xxh64 bs seed = fromIntegral . accursedUnutterablePerformIO $
     allocaXXH64State $ \state -> do
       c_xxh64_reset state (fromIntegral seed)
       mapM_ (update state) (BL.toChunks bs)
       c_xxh64_digest state
     where
-      update state bs' = useBS bs' $ c_xxh64_update state
+      update state bs' = useBS' bs' $ c_xxh64_update state
 
 -- | A newtype over 'BS.ByteString' and `TS.Text` to provide convenient access
 -- to the `XXH3` hash function via `Hashable` type class.
@@ -126,15 +130,15 @@ newtype XXH3 a = XXH3 {unXXH3 :: a}
   deriving (Eq, Ord, Show)
 
 instance Hashable (XXH3 BS.ByteString) where
-  hashWithSalt salt (XXH3 bs) = fromIntegral . unsafePerformIO . useBS bs $
+  hashWithSalt salt (XXH3 bs) = fromIntegral . accursedUnutterablePerformIO . useBS bs $
     \ptr len ->
       (if len < 1000000 then c_xxh3_64bits_withSeed else c_xxh3_64bits_withSeed_safe)
         ptr
-        len
+        (fromIntegral len)
         (fromIntegral salt)
 
 instance Hashable (XXH3 BL.ByteString) where
-  hashWithSalt salt (XXH3 bs) = fromIntegral . unsafePerformIO $
+  hashWithSalt salt (XXH3 bs) = fromIntegral . accursedUnutterablePerformIO $
     allocaXXH3State $ \state -> do
       c_xxh3_64bits_reset_withSeed state (fromIntegral salt)
       mapM_ (update state) (BL.toChunks bs)
@@ -144,33 +148,33 @@ instance Hashable (XXH3 BL.ByteString) where
         (if len < 1000000 then c_xxh3_64bits_update else c_xxh3_64bits_update_safe)
           state
           ptr
-          len
+          (fromIntegral len)
 
 instance Hashable (XXH3 A.ByteArray) where
   hashWithSalt salt (XXH3 ba) =
-    fromIntegral . unsafePerformIO . useBA ba $
+    fromIntegral . accursedUnutterablePerformIO . useBA ba $
       \ptr len ->
         ( if len < 1000000 || not (isPinnedBA ba)
             then c_xxh3_64bits_withSeed
             else c_xxh3_64bits_withSeed_safe
         )
           ptr
-          len
+          (fromIntegral len)
           (fromIntegral salt)
 
 instance Hashable (XXH3 TS.Text) where
-  hashWithSalt salt (XXH3 ts) = fromIntegral . unsafePerformIO . useTS ts $
+  hashWithSalt salt (XXH3 ts) = fromIntegral . accursedUnutterablePerformIO . useTS ts $
     \ptr len ->
       ( if len < 1000000 || not (isPinnedTS ts)
           then c_xxh3_64bits_withSeed
           else c_xxh3_64bits_withSeed_safe
       )
         ptr
-        len
+        (fromIntegral len)
         (fromIntegral salt)
 
 instance Hashable (XXH3 TL.Text) where
-  hashWithSalt salt (XXH3 ts) = fromIntegral . unsafePerformIO $
+  hashWithSalt salt (XXH3 ts) = fromIntegral . accursedUnutterablePerformIO $
     allocaXXH3State $ \state -> do
       c_xxh3_64bits_reset_withSeed state (fromIntegral salt)
       mapM_ (update state) (TL.toChunks ts)
@@ -183,4 +187,4 @@ instance Hashable (XXH3 TL.Text) where
         )
           state
           ptr
-          len
+          (fromIntegral len)
