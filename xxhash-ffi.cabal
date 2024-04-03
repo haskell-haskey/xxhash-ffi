@@ -95,6 +95,3 @@ benchmark xxhash-ffi-bench
         deepseq,
         digest,
         murmur-hash
-
-    if impl(ghc <9.10)
-        build-depends: hashable
