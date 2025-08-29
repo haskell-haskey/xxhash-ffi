@@ -57,7 +57,7 @@ module Data.Digest.XXHash.FFI.C (
 import Foreign.C.Types
 import Foreign.Ptr       (Ptr)
 import GHC.Exts          (Int(..), RealWorld,
-                          MutableByteArray##, newPinnedByteArray##, setByteArray##)
+                          MutableByteArray##, newAlignedPinnedByteArray##, setByteArray##)
 import GHC.IO            (IO(IO))
 
 -- | @since 0.3
@@ -215,28 +215,30 @@ foreign import capi unsafe "xxhash.h XXH3_64bits_digest" c_xxh3_64bits_digest ::
  -> IO CULLong     -- ^ Resulting hash
 
 {-# INLINE allocaMutableByteArray #-}
-allocaMutableByteArray :: Int -> (MutableByteArray## RealWorld -> IO b) -> IO b
-allocaMutableByteArray (I## len) f = IO $ \s0 ->
-    case newPinnedByteArray## len s0 of { (## s1, mba ##) ->
+allocaMutableByteArray :: Int -> Int -> (MutableByteArray## RealWorld -> IO b) -> IO b
+allocaMutableByteArray (I## len) (I## alignment) f = IO $ \s0 ->
+    case newAlignedPinnedByteArray## len alignment s0 of { (## s1, mba ##) ->
     case f mba                 of { IO m -> m s1 }}
 
 {-# INLINE allocaXXH32State #-}
 -- | 'allocaXXH32State' @f@ temporarily allocates a 'XXH32State' and passes it
 --   to the function @f@.
 allocaXXH32State :: (XXH32State -> IO a) -> IO a
-allocaXXH32State = allocaMutableByteArray #{size XXH32_state_t}
+allocaXXH32State = allocaMutableByteArray #{size XXH32_state_t} #{alignment XXH32_state_t}
 
 {-# INLINE allocaXXH64State #-}
 -- | 'allocaXXH64State'  @f@ temporarily allocates a 'XXH64State' and passes it
 --   to the function  @f@.
 allocaXXH64State :: (XXH64State -> IO a) -> IO a
-allocaXXH64State = allocaMutableByteArray #{size XXH64_state_t}
+allocaXXH64State = allocaMutableByteArray #{size XXH64_state_t} #{alignment XXH64_state_t}
 
 {-# INLINE allocaXXH3State #-}
 -- | 'allocaXXH3State' @f@ temporarily allocates a 'XXH3State' and passes it
 --   to the function  @f@.
+--   64-bytes (yes, bytes not bits) alignment requirement is mandated by
+--   xxhash!
 allocaXXH3State :: (XXH3State -> IO a) -> IO a
-allocaXXH3State = allocaMutableByteArray #{size XXH3_state_t}
+allocaXXH3State = allocaMutableByteArray #{size XXH3_state_t} 64
 
 {-# INLINE initXXH3State #-}
 -- | 'initXXH3State' initializes a 'XXH3State' before its first reset
