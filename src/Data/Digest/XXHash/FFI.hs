@@ -140,6 +140,7 @@ instance Hashable (XXH3 BS.ByteString) where
 instance Hashable (XXH3 BL.ByteString) where
   hashWithSalt salt (XXH3 bs) = fromIntegral . accursedUnutterablePerformIO $
     allocaXXH3State $ \state -> do
+      initXXH3State state
       c_xxh3_64bits_reset_withSeed state (fromIntegral salt)
       mapM_ (update state) (BL.toChunks bs)
       c_xxh3_64bits_digest state
@@ -176,6 +177,7 @@ instance Hashable (XXH3 TS.Text) where
 instance Hashable (XXH3 TL.Text) where
   hashWithSalt salt (XXH3 ts) = fromIntegral . accursedUnutterablePerformIO $
     allocaXXH3State $ \state -> do
+      initXXH3State state
       c_xxh3_64bits_reset_withSeed state (fromIntegral salt)
       mapM_ (update state) (TL.toChunks ts)
       c_xxh3_64bits_digest state
