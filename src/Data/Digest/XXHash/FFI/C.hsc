@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns             #-}
 {-# LANGUAGE CApiFFI                  #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE MagicHash                #-}
@@ -36,10 +37,11 @@ module Data.Digest.XXHash.FFI.C (
 , c_xxh64_update
 , c_xxh64_update_safe
 , c_xxh64_digest
-  
+
   -- * XXH3 state functions
 , XXH3State
 , allocaXXH3State
+, initXXH3State
 , c_xxh3_copyState
 , c_xxh3_64bits_reset_withSeed
 , c_xxh3_64bits_update
@@ -55,7 +57,7 @@ module Data.Digest.XXHash.FFI.C (
 import Foreign.C.Types
 import Foreign.Ptr       (Ptr)
 import GHC.Exts          (Int(..), RealWorld,
-                          MutableByteArray##, newPinnedByteArray##)
+                          MutableByteArray##, newPinnedByteArray##, setByteArray##)
 import GHC.IO            (IO(IO))
 
 -- | @since 0.3
@@ -235,3 +237,18 @@ allocaXXH64State = allocaMutableByteArray #{size XXH64_state_t}
 --   to the function  @f@.
 allocaXXH3State :: (XXH3State -> IO a) -> IO a
 allocaXXH3State = allocaMutableByteArray #{size XXH3_state_t}
+
+{-# INLINE initXXH3State #-}
+-- | 'initXXH3State' initializes a 'XXH3State' before its first reset
+--   using 'c_xxh3_64bits_reset_withSeed', see comment of
+--   @XXH3_INITSTATE@ in @xxhash.h@ for details. Here we don't actually
+--   call into @XXH3_INITSTATE@ in C and instead use the memset primop,
+--   so we can avoid the register shuffling overhead of an unsafe ccall
+--   and the NCG shall be capable of inlining the memset primop into a
+--   few memory stores with the @-fmax-inline-memset-insns=@
+--   optimization.
+initXXH3State :: XXH3State -> IO ()
+initXXH3State mba = IO $ \s0 -> case setByteArray## mba 0## len 0## s0 of
+    s1 -> (## s1, () ##)
+    where
+        !(I## len) = #{size XXH3_state_t}
