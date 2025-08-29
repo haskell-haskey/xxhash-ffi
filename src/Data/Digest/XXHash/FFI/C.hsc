@@ -54,6 +54,7 @@ module Data.Digest.XXHash.FFI.C (
 #define XXH_STATIC_LINKING_ONLY
 #include "xxhash.h"
 
+import Data.Digest.XXHash.Internal
 import Foreign.C.Types
 import Foreign.Ptr       (Ptr)
 import GHC.Exts          (Int(..), RealWorld,
@@ -218,7 +219,8 @@ foreign import capi unsafe "xxhash.h XXH3_64bits_digest" c_xxh3_64bits_digest ::
 allocaMutableByteArray :: Int -> Int -> (MutableByteArray## RealWorld -> IO b) -> IO b
 allocaMutableByteArray (I## len) (I## alignment) f = IO $ \s0 ->
     case newAlignedPinnedByteArray## len alignment s0 of { (## s1, mba ##) ->
-    case f mba                 of { IO m -> m s1 }}
+    keepAliveUnlifted## mba s1 $ \s2 ->
+    case f mba                 of { IO m -> m s2 }}
 
 {-# INLINE allocaXXH32State #-}
 -- | 'allocaXXH32State' @f@ temporarily allocates a 'XXH32State' and passes it

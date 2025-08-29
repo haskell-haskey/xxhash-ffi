@@ -24,6 +24,7 @@ import qualified Data.ByteString as BS
 import Data.ByteString.Internal (accursedUnutterablePerformIO)
 import qualified Data.ByteString.Lazy as BL
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
+import Data.Digest.XXHash.Internal
 import Data.Hashable
 import qualified Data.Text.Array as TA
 import qualified Data.Text.Internal as TS
@@ -32,6 +33,7 @@ import Data.Word (Word32, Word64)
 import Foreign.C
 import Foreign.Ptr (plusPtr)
 import GHC.Exts (ByteArray#, Int (..), Ptr (..), byteArrayContents#, isByteArrayPinned#, isTrue#, sizeofByteArray#)
+import GHC.IO
 
 {-# INLINE useBS' #-}
 useBS' :: BS.ByteString -> (CString -> CSize -> IO a) -> IO a
@@ -43,7 +45,7 @@ useBS bs k = unsafeUseAsCStringLen bs $ \(ptr, len) -> k ptr len
 
 {-# INLINE useBA #-}
 useBA :: A.ByteArray -> (CString -> Int -> IO a) -> IO a
-useBA (A.ByteArray ba#) k = k (Ptr (byteArrayContents# ba#)) (I# (sizeofByteArray# ba#))
+useBA (A.ByteArray ba#) k = IO $ \s0 -> keepAliveUnlifted# ba# s0 $ unIO $ k (Ptr (byteArrayContents# ba#)) (I# (sizeofByteArray# ba#))
 
 {-# INLINE isPinnedBA #-}
 isPinnedBA :: A.ByteArray -> Bool
@@ -51,7 +53,7 @@ isPinnedBA (A.ByteArray ba#) = isTrue# (isByteArrayPinned# ba#)
 
 {-# INLINE useTS #-}
 useTS :: TS.Text -> (CString -> Int -> IO a) -> IO a
-useTS ts@(TS.Text _ off len) k =
+useTS ts@(TS.Text ba off len) k = IO $ \s0 -> keepAliveLifted# ba s0 $ unIO $
   k
     (Ptr (byteArrayContents# (textArray ts)) `plusPtr` (off * textMult))
     (len * textMult)
