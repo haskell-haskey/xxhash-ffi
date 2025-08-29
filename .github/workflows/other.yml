@@ -53,10 +53,10 @@ jobs:
   wasi:
     runs-on: ubuntu-latest
     env:
-      GHC_WASM_META_REV: c0aa3bb7d88bb6ec809210e17658dd1ed64ba66c
+      GHC_WASM_META_REV: 4473371e8a385b68043b4227f628c056390ca966
     strategy:
       matrix:
-        ghc: ['9.6', '9.8']
+        ghc: ['9.6', '9.8', '9.10', '9.12']
       fail-fast: false
     steps:
     - name: setup-ghc-wasm32-wasi
@@ -81,7 +81,7 @@ jobs:
         wasm32-wasi-cabal list-bin test:xxhash-ffi-test
     - name: Test
       run: |
-        wasmtime.sh $(wasm32-wasi-cabal list-bin test:xxhash-ffi-test)
+        wasm32-wasi-cabal test --test-wrapper="$CROSS_EMULATOR"
 
   i386:
     runs-on: ubuntu-latest
