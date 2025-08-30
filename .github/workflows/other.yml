@@ -38,7 +38,7 @@ jobs:
     - name: Test
       run: |
         cd xxhash-ffi-*/
-        cabal test
+        cabal test --enable-tests
     - name: Haddock
       run: |
         cd xxhash-ffi-*/

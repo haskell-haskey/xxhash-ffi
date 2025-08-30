@@ -9,7 +9,7 @@
 -- Licence:     BSD3
 --
 -- This module provides FFI imports to the xxHash library,
--- see <https://xxhash.com/doc/v0.8.2/> for documentation.
+-- see <https://xxhash.com/doc/v0.8.3/> for documentation.
 --
 module Data.Digest.XXHash.FFI.C (
   -- * Direct calculation

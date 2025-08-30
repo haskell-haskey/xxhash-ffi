@@ -75,7 +75,7 @@ test-suite xxhash-ffi-test
         tasty,
         tasty-quickcheck,
         hashable,
-        text <2.2
+        text >=2.0 && <2.2
 
     if impl(ghc <9.4)
         build-depends: data-array-byte <0.2

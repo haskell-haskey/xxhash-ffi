@@ -1,10 +1,9 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Main where
+module Main (main) where
 
 import Test.QuickCheck.Monadic
 import Test.Tasty
@@ -53,7 +52,8 @@ instance Arbitrary TS.Text where
 main :: IO ()
 main =
   defaultMain $
-    testGroup "All" $
+    testGroup
+      "All"
       [ testGroup
           "xxh32 strict"
           [ testProperty "<empty>" $
@@ -91,14 +91,12 @@ main =
               [ testProperty "<empty>" $
                   xxh3ts' ""
                     === if finiteBitSize (0 :: Int) == 64 then -8622991962414631331 else -1052714159
-#if MIN_VERSION_text(2,0,0)
               , testProperty "Hello World" $
                   xxh3ts' "Hello World"
                     === if finiteBitSize (0 :: Int) == 64 then 7304763729587342359 else 207324119
               , testProperty "xxhash is a hashing library" $
                   xxh3ts' "xxhash is a hashing library"
                     === if finiteBitSize (0 :: Int) == 64 then 2442613548865080779 else 419890613
-#endif
               ]
           ]
       , testGroup
@@ -138,14 +136,12 @@ main =
               [ testProperty "<empty>" $
                   xxh3ts (TL.fromChunks [""])
                     === if finiteBitSize (0 :: Int) == 64 then -8622991962414631331 else -1052714159
-#if MIN_VERSION_text(2,0,0)
               , testProperty "Hello World" $
                   xxh3ts (TL.fromChunks ["Hello ", "World"])
                     === if finiteBitSize (0 :: Int) == 64 then 7304763729587342359 else 207324119
               , testProperty "xxhash is a hashing library" $
                   xxh3ts (TL.fromChunks ["xxhash is ", "a hashing ", "library"])
                     === if finiteBitSize (0 :: Int) == 64 then 2442613548865080779 else 419890613
-#endif
               ]
           ]
       , testGroup
@@ -160,17 +156,29 @@ main =
               hash (XXH3 ts) === hash (XXH3 (TL.toStrict ts))
           ]
       , testGroup
+          "Streaming API (XXH3)"
+          [ testProperty "checking streaming and non streaming equivalence" $ \(a, b, c, seed) -> (.||. finiteBitSize (0 :: Int) /= 64) <$> ioProperty $ do
+              -- This assumes that Int is 64-bit
+              let hsh = hashWithSalt (fromIntegral seed) (XXH3 (a <> b <> c))
+              CULLong shash <- allocaXXH3State $ \state -> do
+                c_xxh3_64bits_reset_withSeed state (CULLong seed)
+                xxh3Update_64bits state a
+                xxh3Update_64bits state b
+                xxh3Update_64bits state c
+                c_xxh3_64bits_digest state
+              pure (shash === fromIntegral hsh)
+          ]
+      , testGroup
           "Streaming API (64 bit)"
-          [ testProperty "checking streaming and non streaming equivalence" $ \(a, b, c, seed) -> do
+          [ testProperty "checking streaming and non streaming equivalence" $ \(a, b, c, seed) -> ioProperty $ do
               let hsh = xxh64 (a <> b <> c) seed
-              monadicIO $ do
-                (CULLong shash) <- run $ allocaXXH64State $ \state -> do
-                  c_xxh64_reset state (CULLong seed)
-                  xxh64Update state a
-                  xxh64Update state b
-                  xxh64Update state c
-                  c_xxh64_digest state
-                assert (shash == hsh)
+              CULLong shash <- allocaXXH64State $ \state -> do
+                c_xxh64_reset state (CULLong seed)
+                xxh64Update state a
+                xxh64Update state b
+                xxh64Update state c
+                c_xxh64_digest state
+              pure (shash == hsh)
           ]
       , testGroup
           "Streaming API (32 bit)"
@@ -179,15 +187,15 @@ main =
       ]
 
 streaming32Equivalence :: (ByteString, ByteString, ByteString, Word32) -> Property
-streaming32Equivalence (a, b, c, seed) = monadicIO $ do
+streaming32Equivalence (a, b, c, seed) = ioProperty $ do
   let hsh = xxh32 (a <> b <> c) seed
-  (CUInt shash) <- run $ allocaXXH32State $ \state -> do
+  CUInt shash <- allocaXXH32State $ \state -> do
     c_xxh32_reset state (CUInt seed)
     xxh32Update state a
     xxh32Update state b
     xxh32Update state c
     c_xxh32_digest state
-  assert $ shash == hsh
+  pure $ shash == hsh
 
 xxh32bs' :: ByteString -> Word32
 xxh32bs' = flip xxh32 0
