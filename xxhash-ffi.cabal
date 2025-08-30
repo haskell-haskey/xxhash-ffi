@@ -9,7 +9,6 @@ author:             Henri Verroken
 tested-with:
     ghc ==9.12.1 ghc ==9.10.1 ghc ==9.8.4 ghc ==9.6.6 ghc ==9.4.8
     ghc ==9.2.8 ghc ==9.0.2 ghc ==8.10.7 ghc ==8.8.4 ghc ==8.6.5
-    ghc ==8.4.4 ghc ==8.2.2
 
 homepage:           https://github.com/haskell-haskey/xxhash-ffi#readme
 synopsis:           Bindings and high-level helpers for xxHash
@@ -54,7 +53,7 @@ library
     if impl(ghc <9.4)
         build-depends: data-array-byte <0.2
 
-    if (flag(pkg-config) && (impl(ghc <8.4) || impl(ghc >=8.10)))
+    if (flag(pkg-config) && impl(ghc >=8.10))
         pkgconfig-depends: libxxhash >=0.8
 
     else
