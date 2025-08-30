@@ -94,7 +94,5 @@ benchmark xxhash-ffi-bench
         xxhash-ffi,
         bytestring,
         tasty-bench,
-        deepseq,
         digest,
-        hashable,
-        murmur-hash
+        hashable
