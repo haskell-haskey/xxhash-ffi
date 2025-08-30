@@ -1,3 +1,8 @@
+# 0.3.1
+
+* Update bundled `xxhash` C library to 0.8.3.
+* A few critical bug fixes.
+
 # 0.3
 
 * Update bundled `xxhash` C library to 0.8.2.
