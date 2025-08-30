@@ -53,10 +53,12 @@ isPinnedBA (A.ByteArray ba#) = isTrue# (isByteArrayPinned# ba#)
 
 {-# INLINE useTS #-}
 useTS :: TS.Text -> (CString -> Int -> IO a) -> IO a
-useTS ts@(TS.Text ba off len) k = IO $ \s0 -> keepAliveLifted# ba s0 $ unIO $
-  k
-    (Ptr (byteArrayContents# (textArray ts)) `plusPtr` (off * textMult))
-    (len * textMult)
+useTS ts@(TS.Text ba off len) k = IO $ \s0 ->
+  keepAliveLifted# ba s0 $
+    unIO $
+      k
+        (Ptr (byteArrayContents# (textArray ts)) `plusPtr` (off * textMult))
+        (len * textMult)
 
 {-# INLINE isPinnedTS #-}
 isPinnedTS :: TS.Text -> Bool

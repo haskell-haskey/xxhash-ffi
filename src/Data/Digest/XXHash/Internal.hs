@@ -6,8 +6,8 @@
 {-# LANGUAGE UnboxedTuples #-}
 
 module Data.Digest.XXHash.Internal (
-  keepAliveLifted#
-, keepAliveUnlifted#
+  keepAliveLifted#,
+  keepAliveUnlifted#,
 ) where
 
 import GHC.Exts
