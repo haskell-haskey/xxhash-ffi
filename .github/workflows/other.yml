@@ -15,11 +15,6 @@ jobs:
       matrix:
         os: [windows-latest, macOS-latest]
         ghc: ['9.2', 'latest']
-        include:
-        - os: windows-latest
-          ghc: '8.2'
-        - os: windows-latest
-          ghc: '8.4'
     steps:
     - uses: actions/checkout@v4
     - uses: haskell-actions/setup@v2
@@ -45,7 +40,6 @@ jobs:
         cd xxhash-ffi-*/
         cabal test
     - name: Haddock
-      if: matrix.ghc != '8.2'
       run: |
         cd xxhash-ffi-*/
         cabal haddock
